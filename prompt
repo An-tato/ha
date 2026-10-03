@@ -1,0 +1,49 @@
+hey we are trying to make a bigger dataset, what we have is some data but the amount isnt enough. so from this file add additional data based on the already existing ones. some columns are related and dictated by each other( like the varible ID is just VAR-AcronymOfCategory-Count so column 1 and 2 is related)
+
+solely use the available information in the file and just make more of em. 
+
+
+
+
+1. can you give an estimate first
+2. can you elaborate more on that
+3. seems related to the 2nd question
+4. you can use the other types
+5. yup keeping it is good
+6. leaving it is fine
+7. please send it with the old ones since I want to run it separately first
+
+and for if theres any future questions can you give an exmple for each of them
+
+
+Target size
+How many rows do you want? e.g. 200, 500, 2,000, or “as many as temporal splitting produces.”
+
+Expansion dimension
+Should I only expand time by splitting existing windows into one-hour rows?
+Or also expand space by duplicating rows across existing corridors/locations?
+Spatial duplication would be synthetic and may overstate pressure unless handled carefully.
+
+
+How to handle observed_value when splitting hours
+For a row like VAR-VEH-01 with hour_start=18, hour_end=20, observed_value=96, unit=PUV arrivals/h:
+
+    duplicate 96 for each hour,
+
+    divide 96 across the two hours,
+
+    or only split rows whose unit ends in /h?
+
+day_type
+The CSV only contains weekday. The README allows any, weekend, holiday, school_day, workday.
+Should I keep weekday only, or may I use the other allowed values even though they don’t appear in the CSV?
+
+ID strategy for new rows
+I recommend continuing per-category numbering: VAR-VEH-11, VAR-URB-13, etc.
+Do you approve that, or do you want another format?
+
+Provenance note
+Should I append something like [Synthetic hourly expansion of VAR-VEH-01] to notes, or leave notes exactly as-is?
+
+Output
+Original rows + expanded rows in one CSV, or new rows only?

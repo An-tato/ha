@@ -1,0 +1,39 @@
+
+Traffic & mobility
+
+- https://www.xmap.ai/data-catalogs/philippines-road-traffic-data
+- https://github.com/benjiao/manila-traffic-data
+
+Public Transportation
+
+
+
+
+Road Infrastructure
+
+
+
+
+Incidents
+
+
+
+
+Weather
+
+
+
+
+
+Geographic
+# Domain - Dataset/source - Geographic level - Time - Role 
+1 Traffic & MMDA - historical traffic speed -  Makati CBD - Historical - Primary Mobility measurement
+
+2 Public Transportation - Sakay.ph Metro Metro Manila GTFS - Metro Manila - Schedule based - Transit context
+
+3 Road Infrastructure - OpenStreetMap -  Makati Mostly current/static Spatial foundation
+
+4 Incidents - MMDA Makati accident/obstruction logs - Makati CBD - Historical Disruption context
+
+5 Weather - PAGASA CliMap - Philippines / grid - Historical daily - Environmental context
+

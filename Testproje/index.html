@@ -1,0 +1,1709 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Makati Mobility Intelligence — Urban Mobility Decision Support</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  tailwind.config = { theme: { extend: { fontFamily: { sans: ['Inter','ui-sans-serif','system-ui','Segoe UI','sans-serif'] } } } };
+</script>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<style>
+  :root{
+    --bg:#060b16; --glass:rgba(15,23,42,.62); --line:rgba(148,163,184,.16);
+    --cyan:#22d3ee; --amber:#f59e0b; --rose:#ef4444; --violet:#a78bfa; --emerald:#34d399;
+  }
+  html,body{height:100%}
+  body{
+    background:
+      radial-gradient(1200px 620px at 6% -12%, rgba(14,116,144,.42) 0%, transparent 58%),
+      radial-gradient(900px 520px at 100% -6%, rgba(67,56,202,.34) 0%, transparent 55%),
+      radial-gradient(900px 500px at 55% 118%, rgba(190,24,93,.18) 0%, transparent 60%),
+      var(--bg);
+    -webkit-font-smoothing:antialiased;
+  }
+  .glass{ background:var(--glass); backdrop-filter:blur(16px) saturate(150%); -webkit-backdrop-filter:blur(16px) saturate(150%); border:1px solid var(--line); }
+  .glass-soft{ background:rgba(15,23,42,.42); border:1px solid rgba(148,163,184,.12); }
+  .kpi-card{ transition:transform .18s ease, border-color .18s ease, box-shadow .18s ease }
+  .kpi-card:hover{ transform:translateY(-2px); border-color:rgba(34,211,238,.45); box-shadow:0 14px 34px rgba(8,145,178,.16) }
+  .label-xs{ font-size:10px; letter-spacing:.14em; text-transform:uppercase; color:#94a3b8 }
+  .seg{ font-size:12px; font-weight:600; padding:7px 12px; border-radius:999px; border:1px solid rgba(148,163,184,.2); color:#cbd5e1; background:rgba(15,23,42,.5); transition:.18s; }
+  .seg:hover{ border-color:rgba(34,211,238,.55); color:#e2e8f0 }
+  .seg.active{ background:linear-gradient(135deg,#22d3ee,#0ea5e9); color:#04121f; border-color:#22d3ee; box-shadow:0 8px 22px rgba(34,211,238,.28) }
+  .chip{ display:inline-flex; align-items:center; gap:4px; padding:3px 8px; border-radius:999px; font-size:10px; font-weight:600; border:1px solid transparent; white-space:nowrap }
+  .chip-cyan{ background:rgba(34,211,238,.12); color:#67e8f9; border-color:rgba(34,211,238,.32) }
+  .chip-emerald{ background:rgba(52,211,153,.12); color:#6ee7b7; border-color:rgba(52,211,153,.32) }
+  .chip-amber{ background:rgba(245,158,11,.12); color:#fcd34d; border-color:rgba(245,158,11,.32) }
+  .chip-rose{ background:rgba(239,68,68,.14); color:#fca5a5; border-color:rgba(239,68,68,.34) }
+  .chip-violet{ background:rgba(167,139,250,.14); color:#c4b5fd; border-color:rgba(167,139,250,.34) }
+  .chip-slate{ background:rgba(148,163,184,.12); color:#cbd5e1; border-color:rgba(148,163,184,.28) }
+  .chip-indigo{ background:rgba(129,140,248,.14); color:#a5b4fc; border-color:rgba(129,140,248,.32) }
+  .chip-sky{ background:rgba(56,189,248,.13); color:#7dd3fc; border-color:rgba(56,189,248,.30) }
+  /* scrollbars */
+  ::-webkit-scrollbar{width:9px;height:9px}
+  ::-webkit-scrollbar-track{background:rgba(15,23,42,.4)}
+  ::-webkit-scrollbar-thumb{background:rgba(100,116,139,.5);border-radius:999px}
+  ::-webkit-scrollbar-thumb:hover{background:rgba(34,211,238,.6)}
+
+  /* 24h time slider */
+  input[type=range].timeslider{ -webkit-appearance:none; appearance:none; width:100%; height:12px; border-radius:999px; outline:none;
+    background:linear-gradient(90deg,#0ea5e9 0%,#22d3ee 26%,#facc15 55%,#f97316 76%,#ef4444 100%);
+    box-shadow:inset 0 0 0 1px rgba(2,6,23,.6), 0 0 22px rgba(34,211,238,.18); cursor:pointer }
+  input[type=range].timeslider::-webkit-slider-thumb{ -webkit-appearance:none; width:26px; height:26px; border-radius:999px; background:#e2e8f0;
+    border:4px solid #0b1220; box-shadow:0 0 0 3px rgba(34,211,238,.85), 0 6px 18px rgba(0,0,0,.55); cursor:grab }
+  input[type=range].timeslider::-webkit-slider-thumb:active{ cursor:grabbing; box-shadow:0 0 0 6px rgba(34,211,238,.35), 0 6px 18px rgba(0,0,0,.6) }
+  input[type=range].timeslider::-moz-range-thumb{ width:22px;height:22px;border-radius:999px;background:#e2e8f0;border:4px solid #0b1220;box-shadow:0 0 0 3px rgba(34,211,238,.85) }
+
+  /* toggle switch */
+  .sw{ position:relative; flex:none; width:48px; height:26px; border-radius:999px; background:#131c2e; border:1px solid rgba(148,163,184,.3); transition:.2s }
+  .sw::after{ content:''; position:absolute; top:2px; left:2px; width:20px; height:20px; border-radius:999px; background:#94a3b8; transition:.2s }
+  .peer:checked + .sw{ background:rgba(34,211,238,.22); border-color:#22d3ee }
+  .peer:checked + .sw::after{ left:25px; background:#22d3ee; box-shadow:0 0 14px rgba(34,211,238,.9) }
+  .sc-card{ border:1px solid rgba(148,163,184,.14); background:rgba(2,6,23,.42); border-radius:16px; padding:12px; transition:.2s }
+  .sc-card:hover{ border-color:rgba(34,211,238,.4) }
+  .sc-card.on{ border-color:rgba(52,211,153,.5); background:rgba(6,78,59,.22); box-shadow:0 12px 30px rgba(16,185,129,.12) }
+  .sc-card.off{ opacity:.55 }
+
+  /* accordion */
+  details.cause{ border:1px solid rgba(148,163,184,.14); background:rgba(2,6,23,.4); border-radius:14px; overflow:hidden }
+  details.cause + details.cause{ margin-top:8px }
+  details.cause[open]{ border-color:rgba(34,211,238,.42); background:rgba(8,47,73,.28) }
+  details.cause > summary{ cursor:pointer; list-style:none; padding:11px 13px; display:flex; gap:10px; align-items:flex-start }
+  details.cause > summary::-webkit-details-marker{ display:none }
+  details.cause > summary:hover{ background:rgba(148,163,184,.06) }
+  .caret{ transition:transform .2s; color:#67e8f9 }
+  details.cause[open] .caret{ transform:rotate(90deg) }
+
+  /* map + leaflet theming */
+  #map{ position:absolute; inset:0; background:#0b1220; z-index:0 }
+  .leaflet-container{ background:#0b1220; font-family:inherit }
+  .leaflet-popup-content-wrapper{ background:rgba(8,14,26,.96); color:#e2e8f0; border:1px solid rgba(148,163,184,.28); border-radius:14px; box-shadow:0 24px 50px rgba(0,0,0,.6) }
+  .leaflet-popup-tip{ background:rgba(8,14,26,.96); border:1px solid rgba(148,163,184,.28) }
+  .leaflet-popup-content{ margin:12px 14px; font-size:12px; line-height:1.5 }
+  .leaflet-popup-close-button{ color:#94a3b8 !important; padding:6px 6px 0 0 !important }
+  .leaflet-control-attribution{ background:rgba(2,6,23,.72) !important; color:#94a3b8 !important; font-size:10px }
+  .leaflet-control-attribution a{ color:#67e8f9 !important }
+  .leaflet-bar, .leaflet-bar a{ background:#0b1220 !important; color:#e2e8f0 !important; border-color:rgba(148,163,184,.28) !important }
+  .leaflet-bar a:hover{ background:#132038 !important }
+  .leaflet-tooltip.bp-tip{ background:rgba(2,6,23,.92); border:1px solid rgba(34,211,238,.4); color:#e2e8f0; font-size:11px; border-radius:8px; box-shadow:0 10px 24px rgba(0,0,0,.5) }
+  .leaflet-tooltip.bp-tip::before{ border-top-color:rgba(34,211,238,.4) }
+
+  /* bottleneck pins */
+  .bp-pin{ position:relative; width:18px; height:18px }
+  .bp-core{ position:absolute; inset:4px; border-radius:999px; background:var(--c); box-shadow:0 0 0 2px rgba(2,6,23,.85), 0 0 14px var(--c) }
+  .bp-ring{ position:absolute; inset:-7px; border-radius:999px; border:2px solid var(--c); opacity:.55; animation:bpulse 2.4s cubic-bezier(.4,0,.6,1) infinite }
+  @keyframes bpulse{ 0%{ transform:scale(.7); opacity:.75 } 70%{ transform:scale(1.35); opacity:0 } 100%{ transform:scale(1.35); opacity:0 } }
+  .pty-btn{ display:inline-block; margin-top:8px; padding:6px 10px; border-radius:9px; font-size:11px; font-weight:600; cursor:pointer;
+    background:linear-gradient(135deg,#22d3ee,#0ea5e9); color:#04121f; border:none }
+  .pty-btn.ghost{ background:rgba(148,163,184,.14); color:#e2e8f0; border:1px solid rgba(148,163,184,.3); margin-left:6px }
+  .kpi-num{ font-variant-numeric:tabular-nums }
+  @media (prefers-reduced-motion:reduce){ *{ animation:none !important; transition:none !important } }
+</style>
+</head>
+<body class="font-sans text-slate-200 min-h-screen">
+<!-- HEADER -->
+<header class="glass sticky top-0 z-[1200] border-b border-white/10">
+  <div class="mx-auto max-w-[1800px] px-4 py-3 flex flex-wrap items-center gap-x-5 gap-y-2">
+    <div class="flex items-center gap-3">
+      <div class="relative grid h-11 w-11 place-items-center rounded-xl bg-gradient-to-br from-cyan-400/25 to-indigo-500/25 border border-cyan-300/30">
+        <svg viewBox="0 0 24 24" class="h-6 w-6 text-cyan-300" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round">
+          <path d="M12 21s7-5.6 7-11a7 7 0 1 0-14 0c0 5.4 7 11 7 11z"/><circle cx="12" cy="10" r="2.6"/>
+        </svg>
+      </div>
+      <div>
+        <h1 class="text-[17px] sm:text-xl font-extrabold tracking-tight text-white leading-tight">Makati Mobility Intelligence</h1>
+        <p class="text-[11px] sm:text-xs text-slate-400">Data-driven urban mobility decision-support platform</p>
+      </div>
+    </div>
+
+    <div class="ml-auto flex flex-wrap items-center gap-2">
+      <div class="glass-soft flex items-center gap-2 rounded-full px-3 py-1.5">
+        <span class="relative flex h-2 w-2">
+          <span class="absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-70 animate-ping"></span>
+          <span class="relative inline-flex h-2 w-2 rounded-full bg-emerald-400"></span>
+        </span>
+        <span class="text-[11px] font-semibold text-emerald-300">Data Streams Active</span>
+        <span class="hidden sm:inline text-[11px] text-slate-400">Traffic · Transit · Incidents</span>
+      </div>
+      <div class="hidden md:flex glass-soft items-center gap-2 rounded-full px-3 py-1.5">
+        <span class="text-[11px] text-slate-400">Sync</span>
+        <span id="syncClock" class="text-[11px] font-semibold text-cyan-300">--:--:--</span>
+        <span class="chip chip-slate">Simulated feed</span>
+      </div>
+    </div>
+  </div>
+</header>
+
+<!-- MAIN -->
+<main class="mx-auto max-w-[1800px] px-3 sm:px-4 py-4">
+  <div class="grid grid-cols-1 xl:grid-cols-[3fr_2fr] gap-4 xl:gap-5">
+    <section class="xl:sticky xl:top-[76px] xl:self-start">
+      <div class="glass relative rounded-2xl overflow-hidden h-[52vh] min-h-[380px] xl:h-[calc(100vh-118px)] xl:min-h-[560px] shadow-2xl">
+        <div id="map"></div>
+
+        <div id="mapFallback" class="hidden absolute inset-0 grid place-items-center text-center p-6">
+          <div>
+            <p class="text-sm font-semibold text-amber-300">Map library could not load</p>
+            <p class="text-xs text-slate-400 mt-1">Leaflet/OSM tiles need network access. Filters, KPIs, charts and exports below still work.</p>
+          </div>
+        </div>
+
+        <!-- overlay: map layers -->
+        <div class="absolute top-3 right-3 z-[1100] w-[212px] space-y-2">
+          <div class="glass rounded-xl p-3 shadow-xl">
+            <p class="label-xs mb-2">Map Layers</p>
+            <label class="flex items-center justify-between gap-2 cursor-pointer">
+              <span class="text-[12px] font-medium text-slate-200">Traffic heatmap</span>
+              <input type="checkbox" id="tglHeat" class="peer sr-only" checked>
+              <span class="sw scale-[.72] origin-right"></span>
+            </label>
+            <label class="flex items-center justify-between gap-2 cursor-pointer mt-2">
+              <span class="text-[12px] font-medium text-slate-200">Bottleneck pins</span>
+              <input type="checkbox" id="tglMarkers" class="peer sr-only" checked>
+              <span class="sw scale-[.72] origin-right"></span>
+            </label>
+            <div class="mt-3 grid grid-cols-2 gap-1.5">
+              <button data-tiles="osm" class="seg active !px-2 !py-1.5 text-[11px]">Standard</button>
+              <button data-tiles="dark" class="seg !px-2 !py-1.5 text-[11px]">Dark</button>
+            </div>
+            <p class="mt-2 text-[10px] text-slate-500 leading-snug">Heat = modelled density × pressure of the variables recorded nearby. Click a hotspot for its reasons.</p>
+          </div>
+          <div class="glass rounded-xl px-3 py-2 shadow-xl">
+            <p class="label-xs">Heat intensity</p>
+            <div class="mt-2 h-2 rounded-full" style="background:linear-gradient(90deg,#0ea5e9,#22d3ee,#facc15,#f97316,#ef4444)"></div>
+            <div class="flex justify-between text-[10px] text-slate-400 mt-1"><span>Free-flow</span><span>Gridlock</span></div>
+          </div>
+        </div>
+
+        <!-- overlay: live map legend -->
+        <div class="absolute bottom-6 left-3 z-[1100] glass rounded-xl px-3 py-2 shadow-xl max-w-[290px]">
+          <p class="label-xs">Selected viewport</p>
+          <p id="mapCorridorLabel" class="text-[12px] font-semibold text-cyan-300 mt-0.5">All Makati · 42 monitored links</p>
+          <p id="mapHourLabel" class="text-[10px] text-slate-400">18:00 · PM peak window</p>
+        </div>
+      </div>
+    </section>
+    <aside class="space-y-4 xl:max-h-[calc(100vh-92px)] xl:overflow-y-auto xl:pr-1 pb-6">
+      <!-- SPATIAL + TEMPORAL FILTERS -->
+      <div class="glass rounded-2xl p-4 shadow-xl">
+        <div class="flex items-center justify-between">
+          <p class="text-[13px] font-bold text-white">Spatial &amp; Temporal Filters</p>
+          <button id="resetBtn" class="text-[11px] font-semibold text-cyan-300 hover:text-cyan-200">Reset</button>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3">
+          <div>
+            <label for="whereSelect" class="label-xs">Where · location selector</label>
+            <select id="whereSelect" class="mt-1.5 w-full rounded-xl bg-slate-900/70 border border-white/15 px-3 py-2 text-[13px] text-slate-100 outline-none focus:border-cyan-400/70">
+              <option value="all">All Makati</option>
+              <option value="ayala">Ayala Avenue Corridor</option>
+              <option value="buendia">Gil Puyat / Buendia</option>
+              <option value="edsa">EDSA Transit Belt</option>
+              <option value="poblacion">Poblacion District</option>
+              <option value="sanlorenzo">San Lorenzo / Legazpi</option>
+            </select>
+          </div>
+          <div>
+            <span class="label-xs">When · temporal granularity</span>
+            <div class="mt-1.5 flex rounded-full bg-slate-900/60 border border-white/10 p-1">
+              <button data-gran="daily" class="seg active flex-1 !border-transparent">Daily</button>
+              <button data-gran="monthly" class="seg flex-1 !border-transparent">Monthly</button>
+              <button data-gran="yearly" class="seg flex-1 !border-transparent">Yearly</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- 24-HOUR TIME SLIDER -->
+        <div class="mt-4 rounded-xl border border-white/10 bg-slate-950/50 p-3">
+          <div class="flex items-end justify-between mb-1">
+            <div>
+              <p class="label-xs">24-hour time slider</p>
+              <p id="bandLabel" class="text-[11px] text-amber-300 font-semibold mt-0.5">PM peak window</p>
+            </div>
+            <div class="flex items-center gap-2">
+              <button id="playBtn" class="seg !px-3">▶ Play 24h</button>
+              <span id="hourClock" class="text-2xl font-extrabold kpi-num text-white">18:00</span>
+            </div>
+          </div>
+          <input id="timeSlider" class="timeslider mt-2" type="range" min="0" max="23" step="1" value="18" aria-label="Hour of day">
+          <div class="flex justify-between text-[10px] text-slate-500 mt-1">
+            <span>00:00</span><span>06:00</span><span>12:00</span><span>18:00</span><span>23:00</span>
+          </div>
+
+          <div class="grid grid-cols-5 gap-1.5 mt-3 text-center">
+            <div class="rounded-lg bg-slate-900/60 border border-white/10 py-1.5">
+              <p class="text-[9px] uppercase tracking-wider text-slate-400">Hour</p>
+              <p id="liveHour" class="text-[13px] font-bold text-white kpi-num">18:00</p>
+            </div>
+            <div class="rounded-lg bg-slate-900/60 border border-white/10 py-1.5">
+              <p class="text-[9px] uppercase tracking-wider text-slate-400">Speed</p>
+              <p class="text-[13px] font-bold text-cyan-300 kpi-num"><span id="liveSpeed">12.0</span><span class="text-[9px] font-medium text-slate-400"> km/h</span></p>
+            </div>
+            <div class="rounded-lg bg-slate-900/60 border border-white/10 py-1.5">
+              <p class="text-[9px] uppercase tracking-wider text-slate-400">Index</p>
+              <p class="text-[13px] font-bold text-rose-300 kpi-num"><span id="liveCi">78</span><span class="text-[9px] font-medium text-slate-400">%</span></p>
+            </div>
+            <div class="rounded-lg bg-slate-900/60 border border-white/10 py-1.5">
+              <p class="text-[9px] uppercase tracking-wider text-slate-400">Flow</p>
+              <p class="text-[13px] font-bold text-amber-300 kpi-num"><span id="liveFlow">9,100</span></p>
+            </div>
+            <div class="rounded-lg bg-slate-900/60 border border-white/10 py-1.5">
+              <p class="text-[9px] uppercase tracking-wider text-slate-400">Incidents</p>
+              <p class="text-[13px] font-bold text-violet-300 kpi-num"><span id="liveInc">14</span></p>
+            </div>
+          </div>
+        </div>
+        <p id="basisNote" class="mt-2 text-[11px] text-slate-400">Basis: today's observed profile · 1 Oct 2026.</p>
+      </div>
+
+      <!-- KPIs -->
+      <div class="grid grid-cols-2 gap-3">
+        <div class="glass kpi-card rounded-2xl p-3.5">
+          <p class="label-xs">Average travel speed</p>
+          <p class="mt-1 flex items-baseline gap-1"><span id="kpiSpeed" class="text-2xl font-extrabold text-white kpi-num">18.4</span><span class="text-[11px] font-semibold text-slate-400">km/h</span></p>
+          <p id="kpiSpeedSub" class="mt-1 text-[11px] text-cyan-300">24h mean · now 12.0 km/h @ 18:00</p>
+        </div>
+        <div class="glass kpi-card rounded-2xl p-3.5">
+          <p class="label-xs">Peak congestion index</p>
+          <p class="mt-1 flex items-baseline gap-1"><span id="kpiCi" class="text-2xl font-extrabold text-rose-300 kpi-num">78</span><span class="text-[11px] font-semibold text-slate-400">%</span></p>
+          <p id="kpiCiSub" class="mt-1 text-[11px] text-slate-400">18:00 daily peak</p>
+        </div>
+        <div class="glass kpi-card rounded-2xl p-3.5">
+          <p class="label-xs">Public transit share</p>
+          <p class="mt-1 flex items-baseline gap-1"><span id="kpiTransit" class="text-2xl font-extrabold text-emerald-300 kpi-num">62</span><span class="text-[11px] font-semibold text-slate-400">%</span></p>
+          <p id="kpiTransitSub" class="mt-1 text-[11px] text-slate-400">Jeepney 26% · Bus 14% · Rail 22%</p>
+        </div>
+        <div class="glass kpi-card rounded-2xl p-3.5">
+          <p class="label-xs">Incident count</p>
+          <p class="mt-1 flex items-baseline gap-1"><span id="kpiInc" class="text-2xl font-extrabold text-violet-300 kpi-num">14</span><span class="text-[11px] font-semibold text-slate-400">active</span></p>
+          <p id="kpiIncSub" class="mt-1 text-[11px] text-slate-400">7 units deployed</p>
+        </div>
+      </div>
+      <!-- CHARTS -->
+      <div class="glass rounded-2xl p-4 shadow-xl">
+        <div class="flex items-center justify-between gap-2">
+          <div>
+            <p class="text-[13px] font-bold text-white">Speed vs. Volume · 24-hour trend</p>
+            <p id="chartBasis" class="text-[11px] text-slate-400">Daily snapshot · All Makati</p>
+          </div>
+          <span id="chartBadge" class="chip chip-cyan">Hour 18</span>
+        </div>
+        <div class="relative h-[218px] mt-2"><canvas id="speedChart"></canvas></div>
+
+        <div class="mt-4 pt-3 border-t border-white/10">
+          <div class="flex items-center justify-between gap-2">
+            <p class="text-[13px] font-bold text-white">Modal split breakdown</p>
+            <span id="modalBadge" class="chip chip-emerald">Transit 62%</span>
+          </div>
+          <div class="relative h-[186px] mt-2"><canvas id="modalChart"></canvas></div>
+          <p class="text-[10px] text-slate-500 mt-1">Transit share = jeepney + bus + MRT/LRT. Shares renormalised to 100% per selected corridor.</p>
+        </div>
+      </div>
+
+      <!-- INVESTIGATE -->
+      <div class="glass rounded-2xl p-4 shadow-xl">
+        <div class="flex items-center justify-between gap-2">
+          <p class="text-[13px] font-bold text-white">Investigate · Bottleneck root causes</p>
+          <span id="causeCountBadge" class="chip chip-amber">Top 3</span>
+        </div>
+        <p class="text-[11px] text-slate-400 mt-1">Ranked by modelled delay contribution for the current WHERE/WHEN selection. Click a cause to expand evidence and recommended action.</p>
+        <div class="mt-3">
+          <details class="cause" open>
+            <summary>
+              <svg class="caret h-4 w-4 mt-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg>
+              <span class="flex-1">
+                <span id="cause0-t" class="block text-[12.5px] font-semibold text-slate-100">Loading root cause…</span>
+                <span id="cause0-s" class="block text-[11px] text-amber-300 mt-0.5"></span>
+              </span>
+            </summary>
+            <div class="px-4 pb-3 pl-[42px]">
+              <p id="cause0-b" class="text-[11.5px] text-slate-300 leading-relaxed"></p>
+              <p class="mt-2 text-[11px] text-emerald-300"><span class="font-semibold">Recommended action:</span> <span id="cause0-a"></span></p>
+              <p id="cause0-v" class="mt-2 text-[11px] text-slate-300 leading-relaxed"></p>
+            </div>
+          </details>
+          <details class="cause">
+            <summary>
+              <svg class="caret h-4 w-4 mt-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg>
+              <span class="flex-1">
+                <span id="cause1-t" class="block text-[12.5px] font-semibold text-slate-100"></span>
+                <span id="cause1-s" class="block text-[11px] text-amber-300 mt-0.5"></span>
+              </span>
+            </summary>
+            <div class="px-4 pb-3 pl-[42px]">
+              <p id="cause1-b" class="text-[11.5px] text-slate-300 leading-relaxed"></p>
+              <p class="mt-2 text-[11px] text-emerald-300"><span class="font-semibold">Recommended action:</span> <span id="cause1-a"></span></p>
+              <p id="cause1-v" class="mt-2 text-[11px] text-slate-300 leading-relaxed"></p>
+            </div>
+          </details>
+          <details class="cause">
+            <summary>
+              <svg class="caret h-4 w-4 mt-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg>
+              <span class="flex-1">
+                <span id="cause2-t" class="block text-[12.5px] font-semibold text-slate-100"></span>
+                <span id="cause2-s" class="block text-[11px] text-amber-300 mt-0.5"></span>
+              </span>
+            </summary>
+            <div class="px-4 pb-3 pl-[42px]">
+              <p id="cause2-b" class="text-[11.5px] text-slate-300 leading-relaxed"></p>
+              <p class="mt-2 text-[11px] text-emerald-300"><span class="font-semibold">Recommended action:</span> <span id="cause2-a"></span></p>
+              <p id="cause2-v" class="mt-2 text-[11px] text-slate-300 leading-relaxed"></p>
+            </div>
+          </details>
+        </div>
+      </div>
+
+      <!-- VARIABLE EVIDENCE — the CSV store, read live -->
+      <div id="varCard" class="glass rounded-2xl p-4 shadow-xl transition-shadow duration-300">
+        <div class="flex items-center justify-between gap-2">
+          <p class="text-[13px] font-bold text-white">Evidence · Congestion variables (CSV)</p>
+          <span id="varSourceBadge" class="chip chip-slate">loading…</span>
+        </div>
+        <p id="varLoadState" class="text-[11px] text-slate-400 mt-1">Reading the congestion-variable store…</p>
+
+        <div class="mt-3 rounded-xl border border-white/10 bg-slate-950/50 p-3">
+          <div class="flex items-center justify-between gap-2">
+            <span class="label-xs">Paired congestion level</span>
+            <span id="varLevelChip" class="chip chip-slate">—</span>
+          </div>
+          <p id="varLevelNote" class="mt-1.5 text-[11px] text-slate-400">—</p>
+          <div id="varCategoryRow" class="mt-2 flex flex-wrap gap-1.5"></div>
+        </div>
+
+        <p class="label-xs mt-3">Why this corridor congests · ranked variables</p>
+        <div id="varReasonList" class="mt-2 space-y-2"></div>
+        <div id="varQuality" class="mt-1"></div>
+      </div>
+
+      <!-- PLAN / SCENARIO SIMULATOR -->
+      <div class="glass rounded-2xl p-4 shadow-xl">
+        <div class="flex items-center justify-between gap-2">
+          <p class="text-[13px] font-bold text-white">Plan · Scenario simulator</p>
+          <span class="chip chip-slate">Interventions</span>
+        </div>
+        <div id="projection" class="hidden mt-3 rounded-xl border border-emerald-400/40 bg-emerald-500/10 p-3">
+          <p class="text-[11px] font-bold text-emerald-300 uppercase tracking-wider">Projection active</p>
+          <p class="text-[12px] text-slate-200 mt-1" id="projectionText"></p>
+        </div>
+
+        <div class="mt-3 space-y-2.5">
+          <div id="card-buslane" class="sc-card">
+            <label class="flex items-start gap-3 cursor-pointer">
+              <input type="checkbox" id="sc-buslane" class="peer sr-only">
+              <span class="sw mt-0.5"></span>
+              <span class="flex-1">
+                <span class="block text-[13px] font-semibold text-slate-100">Simulate Dedicated Bus Lane on Buendia</span>
+                <span class="block text-[11px] text-slate-400 mt-0.5">Curbside lane on Gil Puyat Ave reallocated from mixed flow to buses, with enforced no-stopping zones on the inner lane.</span>
+                <span class="mt-2 flex flex-wrap gap-1.5">
+                  <span class="chip chip-cyan">Speed +24% (Buendia)</span>
+                  <span class="chip chip-violet">Bus share +6 pts</span>
+                  <span class="chip chip-amber">Flow −4%</span>
+                </span>
+                <span id="note-buslane" class="hidden mt-2 text-[11px] font-semibold"></span>
+              </span>
+            </label>
+          </div>
+
+          <div id="card-loadingban" class="sc-card">
+            <label class="flex items-start gap-3 cursor-pointer">
+              <input type="checkbox" id="sc-loadingban" class="peer sr-only">
+              <span class="sw mt-0.5"></span>
+              <span class="flex-1">
+                <span class="block text-[13px] font-semibold text-slate-100">Peak-hour loading/unloading ban — Ayala Ave</span>
+                <span class="block text-[11px] text-slate-400 mt-0.5">No stopping 07:00–09:00 and 17:00–19:00 along the Ayala corridor, with 12 relocated loading bays.</span>
+                <span class="mt-2 flex flex-wrap gap-1.5">
+                  <span class="chip chip-cyan">Speed +11% (Ayala)</span>
+                  <span class="chip chip-emerald">Incidents −1</span>
+                  <span class="chip chip-violet">Jeepney share +1.5 pts</span>
+                </span>
+                <span id="note-loadingban" class="hidden mt-2 text-[11px] font-semibold"></span>
+              </span>
+            </label>
+          </div>
+
+          <div id="card-retiming" class="sc-card">
+            <label class="flex items-start gap-3 cursor-pointer">
+              <input type="checkbox" id="sc-retiming" class="peer sr-only">
+              <span class="sw mt-0.5"></span>
+              <span class="flex-1">
+                <span class="block text-[13px] font-semibold text-slate-100">Adaptive signal retiming — EDSA &amp; Buendia junctions</span>
+                <span class="block text-[11px] text-slate-400 mt-0.5">Queue-responsive cycle lengths on 9 signalised intersections feeding the CBD.</span>
+                <span class="mt-2 flex flex-wrap gap-1.5">
+                  <span class="chip chip-cyan">EDSA +8%</span>
+                  <span class="chip chip-cyan">Buendia +5%</span>
+                  <span class="chip chip-slate">Network +4%</span>
+                </span>
+                <span id="note-retiming" class="hidden mt-2 text-[11px] font-semibold"></span>
+              </span>
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <!-- DECIDE -->
+      <div class="glass rounded-2xl p-4 shadow-xl">
+        <p class="text-[13px] font-bold text-white">Decide · Stakeholder actions</p>
+        <p class="text-[11px] text-slate-400 mt-1">Exports carry the active WHERE / WHEN filters, the current hour and every enabled scenario assumption.</p>
+        <div class="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+          <button id="briefBtn" class="rounded-xl px-4 py-3 text-[13px] font-bold text-slate-900 bg-gradient-to-br from-cyan-300 to-sky-500 hover:from-cyan-200 hover:to-sky-400 shadow-lg shadow-cyan-500/20">
+            Export Policy Brief
+          </button>
+          <button id="csvBtn" class="rounded-xl px-4 py-3 text-[13px] font-bold text-slate-100 bg-slate-800/70 border border-white/15 hover:border-cyan-400/60">
+            Download Aggregated CSV
+          </button>
+          <button id="varsBtn" class="sm:col-span-2 rounded-xl px-4 py-3 text-[13px] font-bold text-slate-100 bg-slate-800/70 border border-white/15 hover:border-emerald-400/60">
+            Download Variable Table (CSV)
+          </button>
+        </div>
+        <p id="exportHint" class="text-[11px] text-slate-500 mt-2">Policy brief opens in a new tab with a print/save-as-PDF action. The aggregated CSV holds 24 hourly rows; the variable table holds the recorded rows behind the heatmap, in the same schema as <code class="text-cyan-300">data/traffic_variables.csv</code> so it can be re-imported.</p>
+      </div>
+    </aside>
+  </div>
+</main>
+
+<footer class="mx-auto max-w-[1800px] px-4 pb-8 pt-2 text-[11px] text-slate-500 leading-relaxed">
+  <p><span class="text-slate-400 font-semibold">Data note:</span> every variable that pushes congestion is stored in <code class="text-cyan-300">data/traffic_variables.csv</code> — one row per occurrence, carrying its category, location (lat/lng), time window, the traffic congestion level it is paired with, weight, confidence and source. The page fetches that file on load (falling back to an embedded seed copy when opened straight from disk), weights the heat layer with it, and states those rows as the reason for the congestion in each hotspot. Corridor geometry and the hourly congestion curve remain in this script (<code class="text-cyan-300">CORRIDORS</code>, <code class="text-cyan-300">CONG</code>). Schema: <code class="text-cyan-300">data/README-data-dictionary.md</code> · regenerate: <code class="text-cyan-300">node tools/seed-variables-csv.mjs</code>. Figures are illustrative, not live MMDA/LGU telemetry.</p>
+  <p class="mt-1">Makati Mobility Intelligence · Decision-support prototype · Base map © OpenStreetMap contributors.</p>
+</footer>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+
+<!-- ==========================================================================
+     CONGESTION VARIABLE LAYER
+     Storage format: CSV (one row = one congestion variable observed at a
+     location and time window, paired with its congestion level).
+     Authoritative file: data/traffic_variables.csv  (see data/README-data-dictionary.md)
+     The block below is a machine-generated seed of the same file so the page
+     still works when opened directly from disk (file:// blocks fetch).
+     Regenerate both with:  node tools/seed-variables-csv.mjs
+     ========================================================================== -->
+<script type="text/csv" id="csvSeed">
+<!-- CSV:SEED:BEGIN -->
+variable_id,category,variable_name,effect,corridor,location_name,lat,lng,hour_start,hour_end,day_type,congestion_level,congestion_index,observed_value,unit,threshold,weight,confidence,source,last_updated,notes
+VAR-VEH-01,Vehicle Related Variables,Public utility vehicles,increases,edsa,EDSA–Ayala terminal kerbside (MRT-3 bus bay),14.548460,121.028740,18,20,weekday,severe,88,96,PUV arrivals/h,60,0.34,0.82,PUV GPS dwell feed + MRT-3 tap counts,2026-09-28,Bus and jeepney units stage on the running lane while waiting for headway slots; 94 s mean bay dwell.
+VAR-VEH-02,Vehicle Related Variables,Public utility vehicles,increases,buendia,Buendia × Makati Ave westbound kerb,14.557780,121.014420,17,19,weekday,high,75,54,PUV arrivals/h,40,0.28,0.74,Jeepney GPS dwell feed (15 routes),2026-09-28,Jeepney queue spillback from the loading bay reduces the kerb lane to a stop-and-go channel.
+VAR-VEH-03,Vehicle Related Variables,Public utility vehicles,increases,ayala,Ayala Ave × Paseo de Roxas frontage,14.554990,121.023010,7,9,weekday,high,79,62,PUV arrivals/h,45,0.31,0.78,PUV GPS dwell + LGU enforcer logs,2026-09-28,AM office drop-off demand competes with bus and jeepney loading in the same 60 m of kerb.
+VAR-VEH-04,Vehicle Related Variables,Vehicle size,increases,buendia,Buendia eastbound — Chino Roces industrial strip,14.555753,121.010336,8,10,weekday,moderate,54,18,% heavy vehicles,10,0.22,0.7,Cordon survey 2026-08 · cargo counts,2026-09-28,"Trucks serving Pasong Tamo need two lanes to turn, stalling the merged lane behind them."
+VAR-VEH-05,Vehicle Related Variables,Vehicle size,increases,poblacion,J.P. Rizal Ave (Poblacion west),14.565210,121.026390,20,22,weekday,high,71,12,% heavy vehicles,8,0.24,0.66,Field survey 2026-09,2026-09-28,Delivery trucks double-park on a carriageway that is only 6.5 m wide at the frontage.
+VAR-VEH-06,Vehicle Related Variables,Arrival & Departure,increases,ayala,Ayala Ave × Paseo de Roxas drop-off kerb,14.554720,121.023280,7,9,weekday,high,82,310,drop-offs/h,180,0.3,0.8,"Anonymised probe stop events (2,140 stops/wk in-lane)",2026-09-28,"Tower arrivals concentrate inside a 25-minute window, so the kerb saturates long before the peak ends."
+VAR-VEH-07,Vehicle Related Variables,Arrival & Departure,increases,sanlorenzo,Legazpi Village school and office drop-off zone,14.553640,121.013360,7,8,weekday,moderate,58,160,drop-offs/h,90,0.22,0.72,School shuttle logs · enforcer tally,2026-09-28,Six institutions release inside the same 25 minutes on streets with no kiss-and-ride bay.
+VAR-VEH-08,Vehicle Related Variables,Number of turning vehicles,increases,edsa,EDSA × Buendia flyover ramps and U-turn slot,14.555150,121.033250,8,10,weekday,severe,86,1420,turning veh/h,900,0.33,0.81,MMDA junction count 2026-08,2026-09-28,"Four weaving manoeuvres must complete inside 600 m, so the turn bay blocks the through lanes."
+VAR-VEH-09,Vehicle Related Variables,Number of turning vehicles,increases,ayala,Ayala Ave × Paseo de Roxas (all approaches),14.554960,121.023040,17,19,weekday,moderate,63,780,turning veh/h,600,0.21,0.73,MMDA junction count 2026-08,2026-09-28,"PM turning demand exceeds the pocket length, leaving right-turners queued in the through lane."
+VAR-VEH-10,Vehicle Related Variables,Intersection changes,increases,edsa,EDSA–Ayala U-turn slot and busway merge,14.548670,121.028530,17,19,weekday,high,84,6,lane changes/veh,3,0.26,0.68,Video analytics (4 cameras),2026-09-28,"Every vehicle crossing the belt changes lanes at least six times, so turbulence never dissipates."
+VAR-URB-01,Urban Development Variables,Number of vehicles,increases,edsa,EDSA northbound — CBD approach,14.550507,121.028705,17,20,weekday,severe,89,11400,veh/h,8000,0.38,0.86,Probe vehicle counts (48 h sample),2026-09-28,"Peak demand is 1.4× the design volume; the queue is demand-driven, not incident-driven."
+VAR-URB-02,Urban Development Variables,Number of vehicles,increases,ayala,Ayala Ave spine (EDSA–Makati Ave),14.552921,121.023035,17,19,weekday,high,80,2400,veh/h,1800,0.29,0.79,Probe vehicle counts + mall access counts,2026-09-28,Through traffic and mall-bound traffic share the same two lanes all evening.
+VAR-URB-03,Urban Development Variables,Road capacity,increases,edsa,EDSA mixed-flow lanes (3 of 5 reserved for busway/turns),14.556843,121.030341,7,20,weekday,severe,85,1.18,v/c ratio,0.85,0.35,0.9,HCM capacity audit 2026 · LGU link inventory,2026-09-28,"Structural capacity deficit: it persists across the whole day, not only in peaks."
+VAR-URB-04,Urban Development Variables,Road capacity,increases,ayala,"Ayala Ave — two lanes per direction, no turning pockets",14.552136,121.024257,7,20,weekday,high,76,1.06,v/c ratio,0.85,0.27,0.87,LGU link inventory · saturation flow survey,2026-09-28,Any single curbside obstruction pushes the link above capacity because there is no spare lane.
+VAR-URB-05,Urban Development Variables,Frequency of traffic accidents,increases,edsa,EDSA–Buendia interchange,14.555030,121.033370,17,19,weekday,high,78,11,crashes/30 days,4,0.25,0.75,MMDA incident feed + PNP blotter,2026-09-28,Each crash removes one of three lanes for 22 minutes on average.
+VAR-URB-06,Urban Development Variables,Frequency of traffic accidents,increases,all,Makati CBD network (all monitored links),14.554640,121.024460,17,20,weekday,moderate,57,34,crashes/30 days,18,0.18,0.7,MMDA incident feed + PNP blotter,2026-09-28,Network-wide baseline used to normalise the corridor incident KPI.
+VAR-URB-07,Urban Development Variables,Time of day,increases,all,Makati CBD network,14.554550,121.024550,0,23,weekday,moderate,55,2,peak waves/day,2,0.2,0.9,24-hour probe profile (this prototype’s hourly curve),2026-09-28,Context variable: supplies the hour-of-day shape that every other row is read against.
+VAR-URB-08,Urban Development Variables,Road closures,increases,buendia,Buendia × Chino Roces — utility works diversion,14.555760,121.013040,21,5,weekday,moderate,60,1,closed lanes,0,0.2,0.65,LGU works permit register (DPWH/Maynilad notices),2026-09-28,"Night window: works authorised 21:00–05:00, so the closure never clears the AM peak."
+VAR-URB-09,Urban Development Variables,Road construction,increases,ayala,Ayala Ave reblocking — Makati Ave end,14.554457,121.021117,23,4,weekday,low,38,400,m of carriageway,0,0.15,0.72,LGU works permit register 2026-09,2026-09-28,Pavement works scheduled overnight; residual lane narrowing is reported until 06:00.
+VAR-URB-10,Urban Development Variables,Number of merging lanes,increases,edsa,"Buendia flyover merge taper (short taper, 60 m)",14.555090,121.033310,7,9,weekday,severe,87,3,merge points/600 m,1,0.32,0.83,Road geometry audit + video analytics,2026-09-28,Merging three streams inside 60 m caps busway throughput regardless of signal timing.
+VAR-URB-11,Urban Development Variables,Availability of alternative routes,decreases,poblacion,Poblacion one-way grid — five parallel streets,14.566125,121.027900,10,16,weekday,low,28,5,parallel routes,2,0.16,0.7,Network topology audit,2026-09-28,"Decreasing variable: grid redundancy absorbs inter-peak traffic, which is why Poblacion reads low at midday."
+VAR-URB-12,Urban Development Variables,Presence of bottlenecks,increases,ayala,Ayala Ave × Makati Ave signalised junction,14.555710,121.017890,17,19,weekday,high,81,3,critical bottlenecks on link,0,0.3,0.84,Floating-car queue-length analysis,2026-09-28,Queue reaches Paseo de Roxas in the PM peak; LOS F for 96 minutes.
+VAR-DRV-01,Driver Based Variables,Illegal Parking / Bad Parking,increases,poblacion,J.P. Rizal Ave and A. Bonifacio frontage,14.565120,121.026480,20,2,weekday,severe,86,1,lanes lost,0,0.34,0.79,Night enforcement logs + CCTV review (11:00 pm–01:00 am),2026-09-28,Wrapping window: night-economy double parking takes one lane from 20:00 until after midnight.
+VAR-DRV-02,Driver Based Variables,Illegal Parking / Bad Parking,increases,ayala,Ayala Ave curbside (Makati Ave end),14.556040,121.017560,17,19,weekday,high,74,68,parked-in-lane events/h,12,0.26,0.72,Enforcement camera review (18 cameras),2026-09-28,Short-stay parking in the outer lane is the single most repeated violation on the corridor.
+VAR-DRV-03,Driver Based Variables,Illegal Parking / Bad Parking,increases,sanlorenzo,Legazpi Village commercial strip,14.553550,121.013450,12,14,weekday,moderate,52,42,parked-in-lane events/h,10,0.2,0.68,Midday enforcer patrol tally,2026-09-28,"Lunchtime parking pressure, well below the CBD peaks but visible in the heat layer."
+VAR-DRV-04,Driver Based Variables,Unconventional stops,increases,ayala,Ayala Ave outer lane (Paseo de Roxas to Makati Ave),14.554960,121.023040,7,9,weekday,high,79,340,violations/week,50,0.31,0.86,Enforcement camera review + in-lane dwell events,2026-09-28,Informal loading occupies the outer lane; 11 minutes of the corridor’s AM delay is attributed here.
+VAR-DRV-05,Driver Based Variables,"Mga siksik sa kalsada (tricycle, motorcycle, jeeps)",increases,poblacion,Poblacion streets — tricycle and e-trike routes,14.565270,121.026330,18,21,weekday,high,77,410,units/h,220,0.28,0.7,Barangay traffic counts 2026-08,2026-09-28,Counterflow tricycles and e-trikes create six head-on conflict points per kilometre.
+VAR-DRV-06,Driver Based Variables,"Mga siksik sa kalsada (tricycle, motorcycle, jeeps)",increases,edsa,EDSA service road (moped filtering),14.554880,121.033520,17,19,weekday,high,68,380,units/h,150,0.22,0.66,Service-road count station 2026-09,2026-09-28,"Filtering motorcycles occupy the gutter, so right-turners cannot complete their manoeuvre."
+VAR-DRV-07,Driver Based Variables,Random Commuter Stops (public transport stops),increases,edsa,EDSA Carousel bay lane,14.552573,121.029026,7,9,weekday,high,77,190,flag-downs/h,60,0.27,0.75,PUV GPS stop events (off-bay boardings),2026-09-28,Boardings outside the designated bay reset the bus dwell clock and block the bay lane.
+VAR-DRV-08,Driver Based Variables,Random Commuter Stops (public transport stops),increases,buendia,Buendia westbound kerb,14.557810,121.014390,17,19,weekday,high,74,150,flag-downs/h,50,0.25,0.72,PUV GPS stop events + kerb observation,2026-09-28,Unmarked stopping points along 300 m of kerb defeat the formal loading bay provision.
+VAR-DRV-09,Driver Based Variables,Unexpected turns,increases,edsa,EDSA–Ayala service road to main lanes,14.548820,121.028380,17,19,weekday,high,66,240,unexpected turns/h,120,0.21,0.64,Video analytics (turn-path classification),2026-09-28,Late lane entries from the service road force braking waves into the main carriageway.
+VAR-DRV-10,Driver Based Variables,Confusion between drivers,increases,edsa,Buendia interchange weaving zone,14.555030,121.033370,8,9,weekday,high,80,4,conflict points/600 m,1,0.28,0.69,Video analytics (conflict-point detection),2026-09-28,"Ramp, busway and U-turn traffic share one decision zone with no lane discipline markings."
+VAR-DRV-11,Driver Based Variables,Road sign confusion,increases,poblacion,Makati–Mandaluyong bridge approach,14.568740,121.029860,18,20,weekday,moderate,59,6,conflicting sign types/100 m,1,0.18,0.6,Signage audit walkthrough 2026-09,2026-09-28,Three regulatory systems share the approach; drivers brake to read them at the merge point.
+VAR-DRV-12,Driver Based Variables,Driver behavior,increases,all,Makati CBD network,14.554550,121.024550,17,20,weekday,moderate,63,46,% non-compliant acts,15,0.2,0.66,"Field observation survey (12 junctions, 2 h each)",2026-09-28,"Network-wide behaviour baseline: blocking the box, lane straddling, and no-signal turns."
+VAR-DRV-13,Driver Based Variables,Driver Discipline,increases,ayala,Ayala Ave mid-block,14.551406,121.025136,12,14,weekday,moderate,55,38,% non-compliant acts,15,0.19,0.63,Midday observation survey 2026-09,2026-09-28,Off-peak discipline is worse than peak: enforcement is concentrated in the peaks.
+VAR-DRV-14,Driver Based Variables,Traffic rule violations,increases,all,Makati CBD network (LGU ticketing data),14.554880,121.024220,17,19,weekday,high,76,940,violations/week,200,0.29,0.78,LGU ticketing system export 2026-09,2026-09-28,"Ticket volume is a proxy for enforcement exposure, not for absolute violation counts."
+VAR-DRV-15,Driver Based Variables,Traffic rule violations,increases,edsa,EDSA–Ayala busway,14.548790,121.028410,7,9,weekday,high,72,520,violations/week,150,0.24,0.72,Busway CCTV enforcement (automatic capture),2026-09-28,Private vehicles entering the busway during the AM window collapse carousel headway.
+VAR-DRV-16,Driver Based Variables,Overtaking,increases,buendia,Buendia eastbound (two-lane segment),14.557479,121.018571,6,8,weekday,moderate,58,64,overtakes/h,20,0.19,0.61,Video analytics (overtake classification),2026-09-28,Early build-up window: overtaking into a metered downstream section creates stop-start waves.
+VAR-DRV-17,Driver Based Variables,Proper use of loading/unloading,decreases,ayala,Ayala Ave — 12 formal loading bays in service,14.553576,121.022202,10,16,weekday,low,31,88,% compliant loading,70,0.17,0.74,Post-intervention audit (loading-bay compliance),2026-09-28,"Decreasing variable: the loading-bay programme is already delivering, which is why the inter-peak reads low."
+VAR-PED-01,Pedestrian Variables,Normal Citizens,increases,edsa,EDSA–Ayala at-grade crossings,14.548520,121.028680,7,9,weekday,high,69,1900,peds/h,900,0.26,0.77,Pedestrian count survey (2 turning-movement counts),2026-09-28,At-grade crossings consume green time and put pedestrians in conflict with turning vehicles.
+VAR-PED-02,Pedestrian Variables,Normal Citizens,increases,sanlorenzo,Dela Rosa × Greenbelt 3 crossings,14.552640,121.019360,17,19,weekday,moderate,57,1240,peds/h,800,0.2,0.7,Mall access counts + pedestrian survey,2026-09-28,"Retail peaks overlap with the PM commuter peak, so the crossing is requested twice per cycle."
+VAR-PED-03,Pedestrian Variables,Street vendors (mga tusoktusok),increases,poblacion,J.P. Rizal sidewalk market strip,14.565450,121.026150,11,14,weekday,moderate,40,46,stalls along 300 m,15,0.14,0.58,Barangay vendor inventory 2026-09,2026-09-28,"Stalls and their customers narrow the walkable width, pushing pedestrians into the kerb lane."
+VAR-PED-04,Pedestrian Variables,Street vendors (mga tusoktusok),increases,ayala,Ayala Triangle Gardens approach,14.550558,121.026361,11,13,weekday,low,33,18,stalls along 300 m,10,0.12,0.55,LGU vendor inventory + site walk,2026-09-28,Lunchtime cluster; low pressure because the sidewalk here is 5 m wide.
+VAR-PED-05,Pedestrian Variables,Bikes,decreases,poblacion,Poblacion protected bike lane (J.P. Rizal to bridge),14.568860,121.029931,6,9,weekday,low,26,240,bikes/h,100,0.1,0.6,Bike counter (looped inductive detector),2026-09-28,Decreasing variable: the protected lane removes short CBD trips from mixed traffic.
+VAR-PED-06,Pedestrian Variables,Slow pedestrian?,increases,sanlorenzo,Legazpi Village school zone crossing,14.553280,121.013720,7,8,weekday,moderate,42,0.9,m/s crossing speed,1.2,0.13,0.56,Crossing-speed spot survey (school escort groups),2026-09-28,"Escorted children cross below the design speed, extending the pedestrian phase needed per group."
+VAR-PED-07,Pedestrian Variables,Mga namamarang public transpo,increases,buendia,Buendia westbound kerb (informal flag-down),14.557129,121.021117,17,19,weekday,high,65,96,informal boardings/h,30,0.22,0.62,Kerb observation count + PUV stop overlay,2026-09-28,Passengers hailing anywhere along the kerb make every 40 m a potential 20 s stop.
+VAR-PED-08,Pedestrian Variables,Number of passengers,increases,edsa,MRT-3 Ayala platform and bus bay,14.548910,121.028290,17,20,weekday,high,84,10600,passengers/h,6000,0.31,0.8,MRT-3 tap counts + bus APC (automatic passenger counter),2026-09-28,Platform demand is the root driver of the transfer queue that spills onto EDSA.
+VAR-SAF-01,Safety Hazards Variables,Crashes/Collisions,increases,edsa,EDSA × Buendia main carriageway,14.555120,121.033280,17,19,weekday,high,83,3,crashes in window,0,0.27,0.74,MMDA incident feed + PNP blotter,2026-09-28,Active crashes inside the analysis window; each one removes a lane for ~22 minutes.
+VAR-SAF-02,Safety Hazards Variables,Potholes (Sira sa mismong kalsada),increases,buendia,Buendia eastbound (Chino Roces to EDSA),14.556705,121.024194,0,23,weekday,moderate,44,14,defects/km,4,0.16,0.6,Pavement condition survey 2026-08,2026-09-28,Full-day variable: drivers slow to 20 km/h over the worst 180 m regardless of demand.
+VAR-SAF-03,Safety Hazards Variables,Broke down vehicles,increases,edsa,EDSA northbound inner lane,14.560090,121.033222,6,9,weekday,moderate,60,5,breakdowns/30 days,1,0.19,0.63,Towing contractor dispatch logs,2026-09-28,Breakdowns cluster in the AM peak and are cleared in 18 minutes on average.
+VAR-SAF-04,Safety Hazards Variables,EMERGENCY VEHICLES (Police or ambulance and such),increases,all,Makati CBD network,14.554550,121.024550,0,23,weekday,low,30,4,priority responses/day,0,0.1,0.5,Dispatch log (Makati DRRMO + PNP),2026-09-28,Intermittent but high-impact: a siren run stops cross-traffic for 40–90 s with no pattern.
+VAR-EVT-01,Event Variables,Peak-hour/rush hour,increases,all,Makati CBD network,14.554460,121.024640,17,19,weekday,severe,90,1.9,demand / design,0.85,0.4,0.92,24-hour probe profile + volume counts,2026-09-28,Context variable: the PM peak is the binding constraint for every corridor in this build.
+VAR-EVT-02,Event Variables,Peak-hour/rush hour,increases,edsa,EDSA transit belt,14.548649,121.028230,7,9,weekday,severe,89,1.85,demand / design,0.85,0.38,0.9,24-hour probe profile + volume counts,2026-09-28,AM peak on the belt is directional: inbound demand saturates the three mixed lanes by 07:20.
+VAR-EVT-03,Event Variables,Workday vs regular day,increases,all,Makati CBD network,14.554790,121.024310,6,20,weekday,high,73,88,% of weekday office load,60,0.26,0.8,Office occupancy survey + employer travel plans,2026-09-28,"Hybrid work keeps the peak narrower but sharper: fewer trips, more of them in one hour."
+VAR-EVT-04,Event Variables,Morning vs afternoon/time of day traffic,increases,all,Makati CBD network,14.554700,121.024400,6,12,weekday,moderate,62,0.86,AM:PM volume ratio,1,0.17,0.72,Directional volume counts 2026-08,2026-09-28,"AM is 14% smaller than PM but more directional, so one carriageway fails first."
+VAR-EVT-05,Event Variables,School day vs regular day,increases,sanlorenzo,Legazpi Village school cluster,14.553310,121.013690,6,8,weekday,moderate,58,6,schools inside 25 min,2,0.2,0.7,School calendar + bell-schedule inventory,2026-09-28,Calendar variable: adding school days to a normal weekday moves 160 drop-offs into 25 minutes.
+VAR-EVT-06,Event Variables,Parades,increases,ayala,Ayala Ave civic parade route,14.552577,121.023520,15,17,weekday,high,78,2,events/month,0,0.24,0.7,City events permit calendar,2026-09-28,"Permitted closures remove the whole carriageway, so the diversion load hits Buendia and EDSA."
+VAR-EVT-07,Event Variables,VIPs?,increases,all,Makati CBD network (motorcade corridors),14.554940,121.024160,0,23,weekday,moderate,46,3,escorts/month,0,0.12,0.55,LGU security liaison (anonymised),2026-09-28,Unpredictable rolling closures; kept in the template because they dominate incident logs when they occur.
+VAR-EVT-08,Event Variables,Holiday vs regular day,decreases,all,Makati CBD network,14.554850,121.024250,0,23,weekday,low,32,-38,% demand vs weekday,0,0.14,0.68,Holiday volume comparison (2026 calendar),2026-09-28,Decreasing variable: regular holidays cut CBD demand by roughly a third.
+VAR-EVT-09,Event Variables,Fiesta,increases,poblacion,Poblacion fiesta streets,14.565460,121.027260,0,23,weekday,moderate,51,2,fiestas/year,0,0.15,0.58,"Barangay fiesta calendar (Sto. Niño, Poblacion)",2026-09-28,"Processions and street stalls close minor streets for a day, pushing traffic onto J.P. Rizal."
+VAR-EVT-10,Event Variables,Pag may patay,increases,poblacion,Barangay funeral procession routes,14.565270,121.026330,0,23,weekday,low,38,2,processions/month,0,0.11,0.5,Barangay hall logs (anonymised),2026-09-28,Slow-moving processions block narrow Poblacion streets for 20–40 minutes at short notice.
+VAR-WX-01,Weather Variables,Rainfall/harsh winds,increases,all,Makati CBD network,14.554580,121.024520,12,20,weekday,moderate,61,22,mm/h peak intensity,7.5,0.24,0.79,PAGASA gauge (nearest station) + LGU flood reports,2026-09-28,"Rain cuts carousel and jeepney speeds first, then the CBD links through queue spillback."
+VAR-WX-02,Weather Variables,Floods,increases,buendia,Buendia low-lying section (west of Chino Roces),14.555179,121.007862,15,19,weekday,high,79,0.4,m standing water,0.05,0.28,0.71,LGU flood monitoring + DPWH drainage records,2026-09-28,"Standing water removes the kerb lane, so a heavy-rain event turns Buendia into a one-lane corridor."
+VAR-WX-03,Weather Variables,Temperature/Harsh Sun,increases,all,Makati CBD network,14.554910,121.024190,11,15,weekday,moderate,53,34,°C feels-like,33,0.18,0.74,PAGASA temperature + heat-index calculation,2026-09-28,Extreme heat slows crossings and keeps vehicles idling with air-conditioning load.
+VAR-WX-04,Weather Variables,Fogs/Road visibility,increases,sanlorenzo,Legazpi Village (pre-dawn),14.553520,121.013480,4,6,weekday,low,37,600,m visibility,1000,0.12,0.6,PAGASA visibility observation,2026-09-28,"Rare in Makati, but the template keeps the row so the weather category is never silently dropped."
+VAR-WX-05,Weather Variables,Possibility of hail/icy roads,increases,all,Makati CBD network,14.554730,121.024370,0,23,weekday,low,12,0,events/year in record,0,0.05,0.45,Climatological record review,2026-09-28,Low-probability context row: present so the schema can carry zero-incidence variables without gaps.
+<!-- CSV:SEED:END -->
+</script>
+
+<script>
+/* ==========================================================================
+   1. DATA MODEL (illustrative — swap for live telemetry)
+   ========================================================================== */
+const HOURS = Array.from({ length: 24 }, (_, h) => h);
+
+/* Normalised congestion intensity by hour of day (0 = free flow, 1 = gridlock) */
+const CONG = [0.10,0.07,0.06,0.06,0.08,0.16,0.34,0.72,0.95,0.78,0.58,0.55,
+              0.58,0.56,0.54,0.60,0.78,0.94,0.99,0.85,0.62,0.42,0.26,0.16];
+const CMAX  = Math.max(...CONG);
+const CMEAN = CONG.reduce((a, b) => a + b, 0) / CONG.length;
+const SPEED_SENSITIVITY = 0.52;   // share of free-flow speed lost at gridlock
+
+/* WHEN tabs change the statistical basis, not the mechanics */
+const GRANS = {
+  daily:   { key:'daily',   k:1.00, speedMul:1.00, ciMul:1.00, volMul:1.00, incMul:1.00,
+             label:'Daily',   basis:"Basis: today's observed profile · Thu 1 Oct 2026.", note:'Daily snapshot' },
+  monthly: { key:'monthly', k:0.78, speedMul:1.03, ciMul:0.94, volMul:0.97, incMul:0.85,
+             label:'Monthly', basis:'Basis: October 2026 · 30-day mean (single-day spikes averaged out).', note:'30-day mean' },
+  yearly:  { key:'yearly',  k:0.60, speedMul:1.07, ciMul:0.88, volMul:0.94, incMul:0.78,
+             label:'Yearly',  basis:'Basis: 2026 YTD · 12-month mean (includes rainy-season degradation).', note:'12-month mean' }
+};
+
+/* Corridor geometry anchors are hand-traced along real Makati alignments */
+const CORRIDORS = {
+  all: {
+    label:'All Makati', short:'All Makati', links:42,
+    speedBase:24.7, ciPeak:0.78, volPeak:9100, incidentBase:14, heatW:0.90, deploy:7,
+    modal:{ jeepney:26, bus:14, rail:22, private:26, ped:12 },
+    paths:[] // 'all' aggregates every corridor below
+  },
+  ayala: {
+    label:'Ayala Avenue Corridor', short:'Ayala Ave', links:11,
+    speedBase:23.5, ciPeak:0.81, volPeak:2400, incidentBase:3, heatW:0.95, deploy:3,
+    modal:{ jeepney:20, bus:13, rail:15, private:42, ped:10 },
+    paths:[[[14.5489,121.0284],[14.5510,121.0258],[14.5530,121.0230],[14.5545,121.0210],[14.5555,121.0190],[14.5558,121.0178]]]
+  },
+  buendia: {
+    label:'Gil Puyat / Buendia', short:'Buendia', links:9,
+    speedBase:25.5, ciPeak:0.76, volPeak:1900, incidentBase:3, heatW:0.85, deploy:2,
+    modal:{ jeepney:30, bus:18, rail:16, private:28, ped:8 },
+    paths:[[[14.5538,121.0004],[14.5550,121.0048],[14.5556,121.0092],[14.5561,121.0129],[14.5572,121.0162],[14.5576,121.0196],[14.5566,121.0246],[14.5550,121.0290],[14.5550,121.0334]]]
+  },
+  edsa: {
+    label:'EDSA Transit Belt', short:'EDSA', links:9,
+    speedBase:20.5, ciPeak:0.88, volPeak:3400, incidentBase:5, heatW:1.00, deploy:4,
+    modal:{ jeepney:20, bus:20, rail:34, private:18, ped:8 },
+    paths:[[[14.5312,121.0296],[14.5395,121.0285],[14.5445,121.0285],[14.5489,121.0284],[14.5545,121.0290],[14.5600,121.0330],[14.5665,121.0400],[14.5690,121.0430]]]
+  },
+  poblacion: {
+    label:'Poblacion District', short:'Poblacion', links:7,
+    speedBase:26.5, ciPeak:0.62, volPeak:900, incidentBase:2, heatW:0.62, deploy:2,
+    modal:{ jeepney:38, bus:8, rail:6, private:26, ped:22 },
+    paths:[
+      [[14.5625,121.0250],[14.5650,121.0270],[14.5675,121.0290],[14.5690,121.0315]],
+      [[14.5680,121.0230],[14.5686,121.0270],[14.5690,121.0310],[14.5695,121.0345]]
+    ]
+  },
+  sanlorenzo: {
+    label:'San Lorenzo / Legazpi', short:'San Lorenzo', links:6,
+    speedBase:27.5, ciPeak:0.58, volPeak:1100, incidentBase:1, heatW:0.50, deploy:2,
+    modal:{ jeepney:14, bus:8, rail:10, private:56, ped:12 },
+    paths:[
+      [[14.5515,121.0110],[14.5520,121.0145],[14.5524,121.0180],[14.5530,121.0215]],
+      [[14.5534,121.0115],[14.5538,121.0155],[14.5542,121.0195]]
+    ]
+  }
+};
+
+const CORRIDOR_ORDER = ['ayala','buendia','edsa','poblacion','sanlorenzo'];
+
+/* Clickable bottleneck points */
+const BOTTLENECKS = [
+  { id:'ayala-makati', corridor:'ayala', name:'Ayala Ave × Makati Ave', lat:14.5558, lng:121.0178, peakHour:18, severity:'high', delay:9.4, loe:'F',
+    detail:'Signalised junction feeding Ayala Triangle; queue reaches Paseo de Roxas on the PM peak.', lines:'Jeepney 62 routes · BGC bus' },
+  { id:'ayala-paseo', corridor:'ayala', name:'Ayala Ave × Paseo de Roxas', lat:14.5549, lng:121.0231, peakHour:8, severity:'medium', delay:6.1, loe:'E',
+    detail:'Office drop-off lane conflicts with bus/jeepney loading during AM peak.', lines:'MRT-3 Ayala shuttle · 38 jeepney routes' },
+  { id:'edsa-ayala', corridor:'edsa', name:'EDSA–Ayala Terminal (MRT-3)', lat:14.5487, lng:121.0285, peakHour:18, severity:'high', delay:12.8, loe:'F',
+    detail:'Largest transfer node in the CBD; bus bay dwell and crossing pedestrians block the outer lane.', lines:'MRT-3 · EDSA Carousel · 24 bus routes' },
+  { id:'edsa-buendia', corridor:'edsa', name:'EDSA × Buendia (MRT-3 Buendia)', lat:14.5550, lng:121.0334, peakHour:8, severity:'high', delay:11.2, loe:'F',
+    detail:'Weaving between Buendia flyover ramps and the busway merge.', lines:'MRT-3 · EDSA Carousel · provincial vans' },
+  { id:'buendia-chinoroces', corridor:'buendia', name:'Buendia × Chino Roces', lat:14.5560, lng:121.0128, peakHour:8, severity:'medium', delay:7.3, loe:'E',
+    detail:'Truck traffic into Pasong Tamo industrial strip blocks the through lane.', lines:'12 jeepney routes · cargo vehicles' },
+  { id:'buendia-makati', corridor:'buendia', name:'Buendia × Makati Ave', lat:14.5576, lng:121.0146, peakHour:18, severity:'medium', delay:5.6, loe:'D',
+    detail:'Unsignalised pedestrian movements and jeepney queue spillback from the loading bay.', lines:'15 jeepney routes · tricycles' },
+  { id:'poblacion-hub', corridor:'poblacion', name:'Poblacion Transit Hub', lat:14.5688, lng:121.0298, peakHour:19, severity:'high', delay:8.9, loe:'F',
+    detail:'Makati–Mandaluyong bridge approach; night-economy demand peaks 19:00–23:00.', lines:'Jeepney to Sta. Ana · tricycles · e-trikes' },
+  { id:'poblacion-jpr', corridor:'poblacion', name:'J.P. Rizal Ave × A. Bonifacio', lat:14.5653, lng:121.0263, peakHour:20, severity:'medium', delay:4.8, loe:'D',
+    detail:'Double parking serving bars/restaurants reduces the street to one lane at night.', lines:'Jeepney 18 routes · tricycles' },
+  { id:'sl-greenbelt', corridor:'sanlorenzo', name:'Dela Rosa × Greenbelt 3', lat:14.5524, lng:121.0196, peakHour:18, severity:'medium', delay:6.4, loe:'E',
+    detail:'Mall parking-queue spillback onto Dela Rosa during retail peaks.', lines:'Jeepney 9 routes · P2P bus' },
+  { id:'sl-legazpi', corridor:'sanlorenzo', name:'Legazpi Village × Chino Roces', lat:14.5534, lng:121.0136, peakHour:8, severity:'low', delay:3.1, loe:'C',
+    detail:'School and office drop-offs concentrated in a 25-minute window.', lines:'Jeepney 11 routes · school shuttles' }
+];
+
+/* Investigate accordion content per corridor */
+const CAUSES = {
+  all: [
+    { t:'Illegal loading & unloading on Ayala Ave and Buendia', s:'≈340 violations/week · 11 min peak delay contribution',
+      b:'Curbside double-parking and informal loading occupy the outer lane in the 07:00–09:00 and 17:00–19:00 windows. Evidence: 18 enforcement cameras, jeepney GPS dwell events >120 s, and 2,140 GPS probe stops inside the running lane.',
+      a:'Designate 12 formal off-carriageway loading bays and move enforcement to a rolling two-hour patrol rotation.' },
+    { t:'Intersection spillback at EDSA–Ayala and Buendia–Chino Roces', s:'Queue length 480 m · 2 signal cycles to clear',
+      b:'Fixed-time cycles (150–180 s) are sized for average flow, so the AM peak exhausts green time by 08:20. Downstream blocking then propagates back into adjacent CBD streets.',
+      a:'Deploy queue-responsive (adaptive) signal control on 9 junctions; expected 8–11% corridor speed recovery.' },
+    { t:'Transit dwell & informal staging at terminals', s:'MRT-3 Ayala bay dwell 94 s avg · 6 staging hotspots',
+      b:'Bus and jeepney units stage on the running lane while waiting for headway slots, and Poblacion tricycles counterflow to reach the bridge approach.',
+      a:'Convert 3 curb segments into signed staging bays with 3-minute dwell caps and shared dispatch.' }
+  ],
+  ayala: [
+    { t:'Illegal loading/unloading at Ayala × Paseo de Roxas', s:'11 min peak delay · 340 violations/week',
+      b:'Office and mall deliveries stop on the outer lane during the AM peak; probe data shows 2,140 stops inside the running lane per week.',
+      a:'Formalise 8 loading bays on side streets and enforce a 07:00–09:00 no-stopping window.' },
+    { t:'Non-coordinated signals along the 1.6 km spine', s:'7 stop-starts per km · 6.1 min delay',
+      b:'Each junction runs an independent fixed cycle (110–150 s), so platoons released at EDSA arrive at Paseo de Roxas on red.',
+      a:'Time the corridor as one green wave at 700 m progression, reviewed against jeepney dwell times.' },
+    { t:'Parking-search traffic to CBD towers and malls', s:'18% of Ayala through-flow is circulating',
+      b:'Vehicles circling for on-street parking add ~1,900 vehicle-km/day without serving trips.',
+      a:'Mandate shared parking apps for new towers and price on-street curb higher than off-street.' }
+  ],
+  buendia: [
+    { t:'Buendia functions as an unofficial EDSA bypass', s:'+22% through-flow vs. design capacity',
+      b:'When EDSA carousel lanes slow down, private vehicles divert to Buendia; volume peaks within 12 minutes of an EDSA incident.',
+      a:'Signal-gate the diversion at Chino Roces and publish a live diversion advisory instead of hard closure.' },
+    { t:'Unsignalised mid-block crossings', s:'3 locations · 7.3 min delay',
+      b:'Pedestrian crossings at Chino Roces and Makati Ave are uncontrolled, forcing 40-second random stops in the through lane.',
+      a:'Signalise with pedestrian-priority push buttons; add refuge islands.' },
+    { t:'MRT-3 Buendia terminal dwell + jeepney queue spillback', s:'94 s bay dwell · 210 m queue',
+      b:'Jeepney units queue on the westbound lane waiting for terminal slots, blocking the inner lane for 6 hours daily.',
+      a:'Relocate the jeepney staging area 80 m off-carriageway and cap terminal dwell at 3 minutes.' }
+  ],
+  edsa: [
+    { t:'Weaving at Ayala and Buendia interchanges', s:'12.8 min peak delay · LOS F',
+      b:'Flyover ramps, busway merge and U-turn slots force four weaving manoeuvres within 600 m.',
+      a:'Close the Buendia U-turn slot, extend the busway merge taper to 180 m.' },
+    { t:'Bus and provincial van dwell at EDSA–Ayala', s:'94 s average bay dwell · 6 staging hotspots',
+      b:'Enforcement-tolerant curbside staging inside the busway blocking carousel throughput.',
+      a:'Signed staging bays with 3-minute caps plus CCTV-based dwell enforcement.' },
+    { t:'Pedestrian crossing conflicts at stations', s:'1,900 peds/hr · 2.4 min block per cycle',
+      b:'At-grade crossings near MRT-3 Ayala and Buendia consume green time and create conflict points with turning vehicles.',
+      a:'Complete the footbridge network and reprogram exclusive pedestrian phases.' }
+  ],
+  poblacion: [
+    { t:'Night-economy double parking (20:00–02:00)', s:'4.8 min delay · 1 lane lost',
+      b:'J.P. Rizal and A. Bonifacio frontages lose one lane nightly to parking serving bars and restaurants.',
+      a:'Introduce night loading zones with 15-minute limits and shift parking enforcement later.' },
+    { t:'One-way grid with tricycle counterflow', s:'6 conflict points per km',
+      b:'Tricycle and e-trike counterflow on one-way streets creates head-on conflict with car flow.',
+      a:'Legitimise two-way tricycle corridors on 4 streets and mark them with coloured pavement.' },
+    { t:'Makati–Mandaluyong bridge approach queue', s:'8.9 min delay at 19:00',
+      b:'Single approach lane to the bridge plus jeepney queueing at the transit hub caps throughput at 1,100 veh/h.',
+      a:'Meter the bridge approach with a ramp signal during 18:00–21:00.' }
+  ],
+  sanlorenzo: [
+    { t:'School & office drop-off peak concentration', s:'3.1 min delay in a 25-min window',
+      b:'Six schools release within 25 minutes, concentrating drop-offs on Dela Rosa and Legazpi streets.',
+      a:'Stagger bell schedules across schools by 15-minute blocks and add kiss-and-ride bays.' },
+    { t:'Mall parking-queue spillback on Dela Rosa', s:'6.4 min delay at Greenbelt 3',
+      b:'Parking entry queues extend 190 m into the through lane during retail peaks.',
+      a:'Re-route parking entry to Paseo de Roxas and pre-authorise plate-based parking payments.' },
+    { t:'Unprotected pedestrian crossings in Legazpi Village', s:'940 peds/hr · 22 conflict points',
+      b:'Legazpi and Adelantado crossings lack protected phases and refuge islands.',
+      a:'Raise three crossings to a continuous-pedestrian table with refuge islands.' }
+  ]
+};
+
+/* Scenario simulator: speed effects are corridor-specific (+ network dilution for 'all') */
+const SCENARIOS = [
+  { id:'buslane', label:'Dedicated Bus Lane on Buendia', target:'buendia', headline:24,
+    speed:{ buendia:0.24 }, modalShift:{ bus:6, private:-6 }, incDelta:-0, cost:'₱38M signal + lane works' },
+  { id:'loadingban', label:'Peak-hour loading ban — Ayala Ave', target:'ayala', headline:11,
+    speed:{ ayala:0.11 }, modalShift:{ jeepney:1.5, private:-1.5 }, incDelta:-1, cost:'₱6M enforcement + 12 bays' },
+  { id:'retiming', label:'Adaptive signal retiming — EDSA & Buendia', target:'both', headline:8,
+    speed:{ edsa:0.08, buendia:0.05 }, modalShift:{}, incDelta:0, cost:'₱14M controller upgrade' }
+];
+const NETWORK_DILUTION = { buslane:0.45, loadingban:0.45, retiming:0.49 };
+
+const state = { hour:18, corridor:'all', gran:'daily', heat:true, markers:true, playing:false, tiles:'osm',
+                scenarios:{ buslane:false, loadingban:false, retiming:false } };
+
+/* ==========================================================================
+   2. HELPERS
+   ========================================================================== */
+const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
+const round = (v, d = 0) => { const f = Math.pow(10, d); return Math.round(v * f) / f; };
+const fmt1 = v => v.toFixed(1);
+const fmtInt = v => Math.round(v).toLocaleString('en-US');
+const pad2 = v => String(v).padStart(2, '0');
+const hourLabel = h => pad2(h) + ':00';
+const corridorOf = () => CORRIDORS[state.corridor];
+const granOf = () => GRANS[state.gran];
+const activeScenarios = () => SCENARIOS.filter(s => state.scenarios[s.id]);
+
+/* Congestion after granularity smoothing (mean-preserving, so averages stay honest) */
+function cAt(h) {
+  return clamp(CMEAN + granOf().k * (CONG[h] - CMEAN), 0.04, 1);
+}
+function ratioAt(h) { return cAt(h) / CMAX; }
+function ciAt(h) {
+  return clamp(corridorOf().ciPeak * Math.pow(cAt(h) / CMAX, 0.85) * granOf().ciMul, 0.02, 0.99);
+}
+function scenarioSpeedPct(cid) {
+  let pct = 0;
+  activeScenarios().forEach(s => {
+    if (cid === 'all') { const sum = Object.values(s.speed).reduce((a, b) => a + b, 0); pct += sum * (NETWORK_DILUTION[s.id] || 0.45); }
+    else if (s.speed[cid]) pct += s.speed[cid];
+  });
+  return pct;
+}
+function speedAt(h, cid) {
+  const c = cid || state.corridor, base = CORRIDORS[c].speedBase;
+  return base * (1 - SPEED_SENSITIVITY * cAt(h)) * granOf().speedMul * (1 + scenarioSpeedPct(c));
+}
+function volAt(h, cid) {
+  const c = cid || state.corridor;
+  return CORRIDORS[c].volPeak * granOf().volMul * (0.12 + 0.88 * Math.pow(ratioAt(h), 0.9));
+}
+function incidentsNow(h) {
+  let inc = Math.round(corridorOf().incidentBase * granOf().incMul * (0.35 + 0.65 * ratioAt(h)));
+  activeScenarios().forEach(s => { inc += s.incDelta || 0; });
+  return Math.max(1, inc);
+}
+function speedMean(cid) {
+  return HOURS.reduce((a, h) => a + speedAt(h, cid), 0) / 24;
+}
+function ciPeak() {
+  return Math.max(...HOURS.map(h => ciAt(h)));
+}
+/* Modal split: base vector × hour-of-day mode factors × scenario shifts, renormalised to 100% */
+function modalSplit(h) {
+  const r = ratioAt(h), base = corridorOf().modal;
+  const m = {
+    jeepney: base.jeepney * (0.90 + 0.10 * r),
+    bus:     base.bus     * (0.85 + 0.15 * r),
+    rail:    base.rail    * (0.80 + 0.20 * r),
+    private: base.private * (1.15 - 0.15 * r),
+    ped:     base.ped     * (0.55 + 0.45 * r)
+  };
+  activeScenarios().forEach(s => Object.entries(s.modalShift).forEach(([k, v]) => { m[k] = Math.max(1, m[k] + v); }));
+  const total = Object.values(m).reduce((a, b) => a + b, 0);
+  const out = {}; Object.entries(m).forEach(([k, v]) => { out[k] = (v / total) * 100; });
+  return out;
+}
+function transitShare(h) { const m = modalSplit(h); return m.jeepney + m.bus + m.rail; }
+
+/* Heat point sampling along corridor polylines */
+function sampleLine(path, spacing) {
+  const pts = [];
+  for (let i = 0; i < path.length - 1; i++) {
+    const a = path[i], b = path[i + 1], dLat = b[0] - a[0], dLng = b[1] - a[1];
+    const steps = Math.max(2, Math.round(Math.hypot(dLat, dLng) / spacing));
+    for (let s = 0; s < steps; s++) {
+      const t = s / steps, jitter = (Math.random() - 0.5) * 0.0011;
+      pts.push([a[0] + dLat * t + (Math.random() - 0.5) * 0.0005, a[1] + dLng * t + jitter]);
+    }
+  }
+  return pts;
+}
+const haversine = (aLat, aLng, bLat, bLng) => {
+  const R = 6371, dLat = (bLat - aLat) * Math.PI / 180, dLng = (bLng - aLng) * Math.PI / 180;
+  const s = Math.sin(dLat / 2) ** 2 + Math.cos(aLat * Math.PI / 180) * Math.cos(bLat * Math.PI / 180) * Math.sin(dLng / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(s));
+};
+
+const HEAT_POINTS = {};
+(function buildHeatPoints() {
+  CORRIDOR_ORDER.forEach(cid => {
+    const c = CORRIDORS[cid], raw = c.paths.flatMap(p => sampleLine(p, 0.0009));
+    HEAT_POINTS[cid] = raw.map(([lat, lng]) => {
+      let w = 0.72 + Math.random() * 0.42;
+      const near = BOTTLENECKS.some(b => b.corridor === cid && haversine(lat, lng, b.lat, b.lng) < 0.28);
+      if (near) w *= 1.32;
+      return [lat, lng, clamp(w * c.heatW, 0.05, 1)];
+    });
+  });
+})();
+
+/* ==========================================================================
+   2b. CONGESTION VARIABLE LAYER — CSV data store → heatmap evidence
+   --------------------------------------------------------------------------
+   Storage:  data/traffic_variables.csv  (authoritative, one row per observed
+             variable at a location and time window).
+   Schema:   variable_id, category, variable_name, effect, corridor,
+             location_name, lat, lng, hour_start, hour_end, day_type,
+             congestion_level, congestion_index, observed_value, unit,
+             threshold, weight, confidence, source, last_updated, notes
+   Pairing:  congestion_level is derived from congestion_index, so a recorded
+             variable is always paired with a traffic congestion level.
+   Use:      the heat layer is scaled by the pressure of the variables recorded
+             near each cell, and clicking the heat reports those variables as the
+             stated reason for the congestion there.
+   ========================================================================== */
+const CSV_URL = 'data/traffic_variables.csv';
+const CSV_COLUMNS = ['variable_id','category','variable_name','effect','corridor','location_name','lat','lng',
+  'hour_start','hour_end','day_type','congestion_level','congestion_index','observed_value','unit','threshold',
+  'weight','confidence','source','last_updated','notes'];
+
+const CATEGORY_META = {
+  'Vehicle Related Variables':   { code:'VEH', short:'Vehicle-related',   color:'#22d3ee', chip:'chip-cyan' },
+  'Urban Development Variables': { code:'URB', short:'Urban development', color:'#a78bfa', chip:'chip-violet' },
+  'Driver Based Variables':      { code:'DRV', short:'Driver-based',      color:'#f59e0b', chip:'chip-amber' },
+  'Pedestrian Variables':        { code:'PED', short:'Pedestrian',        color:'#34d399', chip:'chip-emerald' },
+  'Safety Hazards Variables':    { code:'SAF', short:'Safety hazard',     color:'#ef4444', chip:'chip-rose' },
+  'Event Variables':             { code:'EVT', short:'Event / calendar',  color:'#818cf8', chip:'chip-indigo' },
+  'Weather Variables':           { code:'WX',  short:'Weather',           color:'#38bdf8', chip:'chip-sky' }
+};
+const LEVEL_META = {
+  low:      { label:'Low',      chip:'chip-sky',   color:'#38bdf8' },
+  moderate: { label:'Moderate', chip:'chip-amber', color:'#f59e0b' },
+  high:     { label:'High',     chip:'chip-rose',  color:'#fb7185' },
+  severe:   { label:'Severe',   chip:'chip-rose',  color:'#ef4444' }
+};
+const VAR = { rows: [], byId: {}, byCorridor: {}, links: {}, linkMax: {}, source: 'pending', file: CSV_URL, loadedAt: null, stats: null, skipped: [] };
+
+const levelOfIndex = ci => ci >= 85 ? 'severe' : ci >= 65 ? 'high' : ci >= 40 ? 'moderate' : 'low';
+const hourInWindow = (h, a, b) => a <= b ? (h >= a && h <= b) : (h >= a || h <= b);
+const windowLabel = (a, b) => hourLabel(a) + '–' + hourLabel(b) + (b < a ? ' (+1 day)' : '');
+
+/* Minimal RFC4180 reader: quoted fields, embedded commas/newlines, # comments */
+function parseCSV(text) {
+  const rows = []; let row = [], cell = '', quoted = false;
+  const src = String(text).replace(/\r\n?/g, '\n');
+  for (let i = 0; i < src.length; i++) {
+    const ch = src[i];
+    if (quoted) {
+      if (ch === '"' && src[i + 1] === '"') { cell += '"'; i++; }
+      else if (ch === '"') quoted = false;
+      else cell += ch;
+      continue;
+    }
+    if (ch === '"') { quoted = true; continue; }
+    if (ch === ',') { row.push(cell); cell = ''; continue; }
+    if (ch === '\n') {
+      row.push(cell); cell = '';
+      const line = row.map(s => s.trim());
+      /* skip blank lines, comment lines and the CSV:SEED markers */
+      if (line.some(s => s.length) && !/^[#<]/.test(line[0])) rows.push(line);
+      row = [];
+      continue;
+    }
+    cell += ch;
+  }
+  if (cell.length || row.length) { row.push(cell); rows.push(row.map(s => s.trim())); }
+  const head = rows.shift();
+  if (!head) return [];
+  return rows.map(cols => head.reduce((o, key, i) => (o[key] = cols[i] === undefined ? '' : cols[i], o), {}));
+}
+
+function ingestVariables(text, source) {
+  const raw = parseCSV(text);
+  const rows = [], skipped = [];
+  let levelRepaired = 0;
+  raw.forEach((r, i) => {
+    const meta = CATEGORY_META[r.category];
+    const corridor = CORRIDORS[r.corridor] ? r.corridor : null;
+    const ci = Number(r.congestion_index), h0 = Number(r.hour_start), h1 = Number(r.hour_end);
+    const lat = Number(r.lat), lng = Number(r.lng);
+    if (!meta) return skipped.push({ line: i + 2, id: r.variable_id, why: 'unknown category "' + r.category + '"' });
+    if (!corridor) return skipped.push({ line: i + 2, id: r.variable_id, why: 'corridor "' + r.corridor + '" is not a WHERE filter key' });
+    if (![ci, h0, h1, lat, lng].every(Number.isFinite)) return skipped.push({ line: i + 2, id: r.variable_id, why: 'numeric field missing' });
+    if (h0 < 0 || h0 > 23 || h1 < 0 || h1 > 23) return skipped.push({ line: i + 2, id: r.variable_id, why: 'hour outside 00–23' });
+    if (!Number.isFinite(Number(r.weight))) return skipped.push({ line: i + 2, id: r.variable_id, why: 'weight missing' });
+    const level = levelOfIndex(ci);
+    if (r.congestion_level && r.congestion_level !== level) levelRepaired++;
+    const w = clamp(Number(r.weight), 0, 1), conf = clamp(Number(r.confidence) || 0, 0, 1);
+    rows.push({
+      i: rows.length, id: r.variable_id, category: r.category, code: meta.code, meta,
+      name: r.variable_name, effect: r.effect === 'decreases' ? 'decreases' : 'increases',
+      corridor, network: corridor === 'all', location: r.location_name,
+      lat, lng, h0, h1, day: r.day_type || 'any', level, ci,
+      value: r.observed_value, unit: r.unit, threshold: r.threshold,
+      w, conf, source: r.source, updated: r.last_updated, note: r.notes,
+      /* pressure = how much of the measured congestion this occurrence explains */
+      pressure: r.effect === 'decreases' ? -w * (ci / 100) : w * (ci / 100) * (0.65 + 0.35 * conf),
+      raw: r
+    });
+  });
+  VAR.rows = rows;
+  VAR.byId = rows.reduce((m, r) => (m[r.id] = r, m), {});
+  VAR.byCorridor = {};
+  CORRIDOR_ORDER.concat('all').forEach(c => { VAR.byCorridor[c] = rows.filter(r => r.corridor === c); });
+  VAR.source = source;
+  VAR.loadedAt = new Date();
+  VAR.skipped = skipped;
+  const countBy = k => new Set(rows.map(r => r[k])).size;
+  VAR.stats = {
+    rows: rows.length, variables: countBy('name'), categories: countBy('category'), corridors: countBy('corridor'),
+    network: rows.filter(r => r.network).length, severe: rows.filter(r => r.level === 'severe').length,
+    wrapped: rows.filter(r => r.h1 < r.h0).length, mitigating: rows.filter(r => r.effect === 'decreases').length,
+    skipped: skipped.length, levelRepaired
+  };
+  return VAR.stats;
+}
+
+/* Rows that apply to a corridor view at an hour (network rows act as context) */
+function activeVarRows(cid, h) {
+  if (!VAR.rows.length) return [];
+  const pool = cid === 'all' ? VAR.rows : VAR.rows.filter(r => r.corridor === cid || r.network);
+  return pool.filter(r => hourInWindow(h, r.h0, r.h1));
+}
+/* Renormalise pressure into a share of the positive load recorded in the window */
+function varPressure(rows) {
+  const pos = rows.reduce((a, r) => a + Math.max(r.pressure, 0), 0) || 1;
+  return rows.map(r => ({ row: r, share: r.pressure / pos })).sort((a, b) => b.share - a.share);
+}
+function varRecordedLevel(rows) {
+  const pos = rows.filter(r => r.pressure > 0);
+  const tot = pos.reduce((a, r) => a + r.pressure, 0) || 1;
+  const index = pos.reduce((a, r) => a + r.ci * r.pressure, 0) / tot;
+  return { index, level: levelOfIndex(index), n: rows.length };
+}
+
+/* Geographic binding: which recorded variables sit next to each heat cell */
+function linkHeatVariables() {
+  if (!VAR.rows.length) return;
+  CORRIDOR_ORDER.forEach(cid => {
+    const links = HEAT_POINTS[cid].map(pt => {
+      const hits = [];
+      VAR.rows.forEach(r => {
+        if (r.network || r.corridor !== cid) return;
+        if (haversine(pt[0], pt[1], r.lat, r.lng) <= 0.45) hits.push(r.i);
+      });
+      return hits;
+    });
+    VAR.links[cid] = links;
+    VAR.linkMax[cid] = Math.max(1e-6, ...links.map(ids => ids.reduce((a, i) => a + VAR.rows[i].w, 0)));
+  });
+}
+function varBoostAt(cid, idx, activeIds) {
+  const ids = VAR.links[cid] && VAR.links[cid][idx];
+  if (!ids || !ids.length) return 1;
+  const sum = ids.reduce((a, i) => a + VAR.rows[i].w, 0);
+  const live = ids.some(i => activeIds.has(i));
+  return 1 + (live ? 0.42 : 0.12) * clamp(sum / VAR.linkMax[cid], 0, 1);
+}
+
+/* Root causes cite the exact variable rows that evidence them */
+const CAUSE_VARS = {
+  all: [['VAR-DRV-04','VAR-DRV-02','VAR-DRV-01'], ['VAR-URB-10','VAR-URB-08','VAR-DRV-09'], ['VAR-VEH-01','VAR-PED-08','VAR-VEH-10']],
+  ayala: [['VAR-DRV-04','VAR-VEH-03'], ['VAR-DRV-13','VAR-VEH-08','VAR-URB-02'], ['VAR-DRV-02','VAR-URB-12','VAR-VEH-06']],
+  buendia: [['VAR-URB-01','VAR-URB-03','VAR-DRV-16'], ['VAR-PED-07','VAR-PED-01','VAR-DRV-08'], ['VAR-VEH-02','VAR-VEH-01','VAR-DRV-08']],
+  edsa: [['VAR-DRV-10','VAR-URB-10','VAR-URB-05'], ['VAR-VEH-01','VAR-PED-08','VAR-DRV-07'], ['VAR-PED-01','VAR-VEH-10']],
+  poblacion: [['VAR-DRV-01','VAR-VEH-05'], ['VAR-DRV-05','VAR-DRV-11'], ['VAR-DRV-11','VAR-VEH-05']],
+  sanlorenzo: [['VAR-VEH-07','VAR-EVT-05','VAR-PED-06'], ['VAR-DRV-03','VAR-PED-02'], ['VAR-PED-02','VAR-PED-06']]
+};
+
+const varNameChip = r => `<span class="chip ${r.meta.chip}">${r.meta.short}</span>`;
+const varLevelChip = r => `<span class="chip ${LEVEL_META[r.level].chip}">${LEVEL_META[r.level].label} ${Math.round(r.ci)}%</span>`;
+
+/* ------------- Evidence panel: variables paired with the congestion level -- */
+function renderVariables() {
+  const h = state.hour, cid = state.corridor;
+  const badge = document.getElementById('varSourceBadge');
+  const state_ = document.getElementById('varLoadState');
+  if (!VAR.rows.length) {
+    badge.textContent = 'loading…'; badge.className = 'chip chip-slate';
+    state_.textContent = 'Loading ' + CSV_URL + ' …';
+    document.getElementById('varReasonList').innerHTML = '<p class="text-[11px] text-slate-500">Reading the congestion-variable store…</p>';
+    document.getElementById('varCategoryRow').innerHTML = '';
+    return;
+  }
+  const rows = activeVarRows(cid, h);
+  const scored = varPressure(rows);
+  const positives = scored.filter(s => s.share > 0);
+  const rec = varRecordedLevel(rows);
+  const modelCi = ciAt(h) * 100, modelLevel = levelOfIndex(modelCi);
+  const s = VAR.stats;
+
+  badge.textContent = 'CSV · ' + s.rows + ' rows';
+  badge.className = 'chip ' + (VAR.source === 'csv' ? 'chip-emerald' : 'chip-amber');
+  state_.innerHTML = VAR.source === 'csv'
+    ? `Live store <span class="text-cyan-300">${VAR.file}</span> · ${s.variables} variables · ${s.categories} categories · loaded ${VAR.loadedAt.toLocaleTimeString('en-PH', { hour12: false })}`
+    : `Embedded seed copy (fetch of <span class="text-cyan-300">${VAR.file}</span> unavailable — serve the folder over HTTP for the live store) · ${s.variables} variables · ${s.categories} categories`;
+
+  document.getElementById('varLevelChip').textContent = LEVEL_META[modelLevel].label + ' · ' + Math.round(modelCi) + '%';
+  document.getElementById('varLevelChip').className = 'chip ' + LEVEL_META[modelLevel].chip;
+  document.getElementById('varLevelNote').innerHTML =
+    `<span class="text-slate-300">${rows.length}</span> recorded variable rows are active in this window ` +
+    `(${CORRIDORS[cid].label} at ${hourLabel(h)}). Paired congestion level: ` +
+    `<span class="font-semibold" style="color:${LEVEL_META[rec.level].color}">${LEVEL_META[rec.level].label} · mean index ${Math.round(rec.index)}%</span> ` +
+    `· model index for the same cell ${Math.round(modelCi)}%.`;
+
+  /* Category rollup — which variable families explain the congestion right now */
+  const byCat = {};
+  positives.forEach(({ row, share }) => {
+    const c = byCat[row.category] || (byCat[row.category] = { share: 0, n: 0, meta: row.meta });
+    c.share += share; c.n += 1;
+  });
+  document.getElementById('varCategoryRow').innerHTML = Object.entries(byCat)
+    .sort((a, b) => b[1].share - a[1].share)
+    .map(([, v]) => `<span class="chip ${v.meta.chip}" title="${v.n} active rows">${v.meta.short} ${Math.round(v.share * 100)}%</span>`).join('');
+
+  /* Ranked reasons — the heatmap's stated explanation for the congestion level */
+  const top = positives.slice(0, 5), topShare = top.length ? top[0].share : 1;
+  document.getElementById('varReasonList').innerHTML = top.map(({ row, share }, i) => {
+    const eff = row.effect === 'decreases';
+    const width = clamp((share / topShare) * 100, 4, 100);
+    return `<div class="rounded-xl border border-white/10 bg-slate-950/55 p-2.5">
+      <div class="flex items-start gap-2">
+        <span class="text-[10px] font-bold text-slate-500 kpi-num mt-0.5">${i + 1}</span>
+        ${varNameChip(row)}
+        <span class="flex-1 text-[12px] font-semibold text-slate-100 leading-snug">${row.name}</span>
+        ${varLevelChip(row)}
+      </div>
+      <p class="mt-1 text-[10.5px] text-slate-400">${row.location}${row.network ? ' <span class="chip chip-slate">network-wide</span>' : ''} · ${windowLabel(row.h0, row.h1)} · ${row.day}</p>
+      <div class="mt-1.5 h-1.5 rounded-full bg-white/10 overflow-hidden"><div style="height:100%;width:${width}%;background:${row.meta.color}"></div></div>
+      <p class="mt-1 text-[10px] text-slate-500">Share of congestion pressure <span class="text-slate-300 font-semibold">${Math.round(share * 100)}%</span> · recorded ${row.value} ${row.unit} (trigger ${row.threshold}) · confidence ${Math.round(row.conf * 100)}% · ${row.id} · ${row.source}</p>
+      <p class="mt-1 text-[10px] text-slate-400 italic">Why it congests: ${row.note || '—'}</p>
+    </div>`;
+  }).join('') || '<p class="text-[11px] text-slate-500">No variables recorded for this corridor and hour. Try another hour or corridor.</p>';
+
+  /* Mitigating variables + provenance */
+  const mitigating = scored.filter(s2 => s2.share < 0);
+  document.getElementById('varQuality').innerHTML =
+    (mitigating.length
+      ? `<p class="text-[10.5px] text-emerald-300">Working against congestion: ` +
+        mitigating.map(({ row, share }) => `${row.name} (${Math.abs(Math.round(share * 100))}% relief)`).join(' · ') + '</p>'
+      : '') +
+    `<p class="text-[10.5px] text-slate-500 mt-1">Store integrity: ${s.rows} rows in ${VAR.file} · ${s.categories} categories · ` +
+    `${s.corridors} corridor keys (${s.network} network-wide) · ${s.severe} severe rows · ${s.wrapped} wrapping windows · ` +
+    `${s.skipped} rejected rows${s.levelRepaired ? ' · ' + s.levelRepaired + ' level/index pairs corrected' : ''}` +
+    (VAR.skipped.length ? ` — first reject: line ${VAR.skipped[0].line} (${VAR.skipped[0].why})` : '') + '</p>' +
+    `<p class="text-[10.5px] text-slate-500 mt-1">Pressure share = weight × congestion index, renormalised per corridor-window (mitigating rows subtract). Levels: &lt;40 low · 40–64 moderate · 65–84 high · ≥85 severe.</p>`;
+}
+
+/* ------------- Clicking the heatmap reports the reasons for the heat ------ */
+function varTopRows(cid, h, n, filterIds) {
+  let rows = activeVarRows(cid, h);
+  if (filterIds && filterIds.size) rows = rows.filter(r => filterIds.has(r.i));
+  return varPressure(rows).filter(s => s.share > 0).slice(0, n || 4);
+}
+
+let heatRender = [];   /* { lat, lng, ids } for every cell currently drawn */
+
+function heatReasonPopup(latlng, cell) {
+  const h = state.hour, cid = state.corridor;
+  const ids = new Set(cell ? cell.ids : []);
+  let top = varTopRows(cid, h, 4, ids);
+  let geo = 'recorded on this cell';
+  if (!top.length) { top = varTopRows(cid, h, 4); geo = 'closest recorded variables for this corridor & hour'; }
+  const rec = varRecordedLevel(activeVarRows(cid, h));
+  const modelCi = ciAt(h) * 100, modelLevel = levelOfIndex(modelCi);
+  const list = top.map(({ row, share }) => `
+    <li style="margin:0 0 7px">
+      <span class="chip ${row.meta.chip}">${row.meta.short}</span>
+      <b style="color:#fff">${row.name}</b>
+      <span class="chip ${LEVEL_META[row.level].chip}">congestion ${LEVEL_META[row.level].label} ${Math.round(row.ci)}%</span>
+      <div style="color:#94a3b8;font-size:11px;margin-top:2px">${row.location} · ${windowLabel(row.h0, row.h1)} · share ${Math.round(share * 100)}% · ${row.value} ${row.unit} (trigger ${row.threshold})</div>
+      <div style="color:#64748b;font-size:10.5px;margin-top:2px">${row.id} · ${row.source}</div>
+    </li>`).join('');
+  return `<div style="min-width:268px;max-width:310px">
+    <p style="font-size:13px;font-weight:700;color:#fff;margin:0">Congestion level at this cell</p>
+    <p style="font-size:11px;color:#94a3b8;margin:2px 0 7px">${CORRIDORS[cid].label} · ${hourLabel(h)} · ${bandOf(h)[0]}</p>
+    <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px">
+      <span class="chip ${LEVEL_META[modelLevel].chip}">Model index ${Math.round(modelCi)}% — ${LEVEL_META[modelLevel].label}</span>
+      <span class="chip chip-slate">Recorded mean ${Math.round(rec.index)}% — ${LEVEL_META[rec.level].label}</span>
+    </div>
+    <p style="font-size:11px;font-weight:700;color:#67e8f9;margin:0 0 5px">Reason (variables recorded here)</p>
+    <ul style="list-style:none;padding:0;margin:0">${list || '<li style="color:#94a3b8;font-size:11px">No variable rows bucketed at this location.</li>'}</ul>
+    <p style="font-size:10px;color:#64748b;margin:6px 0 0">Evidence: ${geo} · store ${VAR.file} (${VAR.source === 'csv' ? 'live CSV' : 'embedded seed'})</p>
+    <button class="pty-btn" onclick="revealDrivers()">Open driver panel</button>
+    <button class="pty-btn ghost" onclick="map.closePopup()">Dismiss</button>
+  </div>`;
+}
+
+function onHeatClick(e) {
+  if (!heatRender.length) return;
+  let best = null, bestD = 0.32;
+  heatRender.forEach(cell => {
+    const d = haversine(e.latlng.lat, e.latlng.lng, cell.lat, cell.lng);
+    if (d < bestD) { bestD = d; best = cell; }
+  });
+  if (!best) return;
+  L.popup({ maxWidth: 340, offset: [0, -6] }).setLatLng([best.lat, best.lng]).setContent(heatReasonPopup(e.latlng, best)).openOn(map);
+}
+
+function revealDrivers() {
+  const card = document.getElementById('varCard');
+  if (!card) return;
+  card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  card.classList.add('ring-2', 'ring-cyan-400/60');
+  setTimeout(() => card.classList.remove('ring-2', 'ring-cyan-400/60'), 1800);
+}
+window.revealDrivers = revealDrivers;
+
+/* ------------- Loader: authoritative CSV first, embedded seed as fallback -- */
+async function loadVariables() {
+  let text = null, source = 'seed';
+  try {
+    const res = await fetch(CSV_URL, { cache: 'no-store' });
+    if (res.ok) { const body = await res.text(); if (body && !/^\s*</.test(body)) { text = body; source = 'csv'; } }
+  } catch (err) { /* file:// or offline — fall through to the embedded seed */ }
+  if (!text) {
+    const seed = document.getElementById('csvSeed');
+    text = seed ? seed.textContent : '';
+  }
+  ingestVariables(text, source);
+  if (VAR.rows.length < 5) {
+    const seed = document.getElementById('csvSeed');
+    if (seed) ingestVariables(seed.textContent, 'seed');
+  }
+  linkHeatVariables();
+  renderVariables();
+  renderCauses();   /* root causes now cite named variable rows */
+  updateHeat();
+  updateCharts();
+}
+
+/* ------------- Export: the variable table, round-trip safe ----------------- */
+function exportVarsCSV() {
+  const c = corridorOf(), h = state.hour;
+  const rows = activeVarRows(state.corridor, h)
+    .slice().sort((a, b) => b.pressure - a.pressure);
+  const head = [
+    '# Makati Mobility Intelligence — congestion variable evidence extract',
+    '# corridor,' + c.label,
+    '# selected_hour,' + hourLabel(h),
+    '# window_rule,hour_start<=hour<=hour_end (wraps midnight when hour_end<hour_start)',
+    '# pairing_rule,congestion_level is derived from congestion_index: <40 low · 40-64 moderate · 65-84 high · >=85 severe',
+    '# pressure,weight x congestion_index (per row) · share is renormalised across the extract',
+    '# source_file,' + VAR.file + ' (' + (VAR.source === 'csv' ? 'live' : 'embedded seed') + ')',
+    '# generated,' + new Date().toISOString(),
+    ''
+  ];
+  const body = rows.map(r => CSV_COLUMNS.map(col => {
+    const v = r.raw[col];
+    return /[",\n]/.test(String(v == null ? '' : v)) ? '"' + String(v).replace(/"/g, '""') + '"' : (v == null ? '' : v);
+  }).join(','));
+  download(`makati-congestion-variables_${state.corridor}_${stamp()}.csv`, head.concat([CSV_COLUMNS.join(',')], body).join('\n') + '\n', 'text/csv');
+  const hint = document.getElementById('exportHint');
+  hint.textContent = `Variable table exported — ${rows.length} recorded rows for ${c.label} at ${hourLabel(h)}, same schema as ${VAR.file} so it can be re-imported directly.`;
+  hint.className = 'text-[11px] mt-2 text-emerald-300';
+}
+
+/* ==========================================================================
+   3. MAP (Leaflet + leaflet-heat)
+   ========================================================================== */
+const MAKATI_CENTER = [14.5547, 121.0244];
+let map = null, heatLayer = null, markerLayer = null, tiles = {};
+
+function initMap() {
+  if (typeof L === 'undefined') { document.getElementById('mapFallback').classList.remove('hidden'); return; }
+
+  map = L.map('map', { center: MAKATI_CENTER, zoom: 14, zoomControl: true, preferCanvas: true, worldCopyJump: false });
+
+  tiles.osm  = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+                { maxZoom: 19, attribution: '© OpenStreetMap contributors' });
+  tiles.dark = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
+                { maxZoom: 19, attribution: '© OpenStreetMap contributors · © CARTO' });
+  tiles.osm.addTo(map);
+
+  heatLayer = L.heatLayer([], {
+    radius: 32, blur: 28, maxZoom: 17, minOpacity: 0.05, max: 0.92,
+    gradient: { 0.15:'#0ea5e9', 0.34:'#22d3ee', 0.52:'#facc15', 0.72:'#f97316', 0.88:'#ef4444', 1.0:'#b91c1c' }
+  });
+  if (state.heat) heatLayer.addTo(map);
+  map.on('click', onHeatClick);   /* click a hot cell → variables that explain it */
+
+  markerLayer = L.layerGroup();
+  buildMarkers();
+  if (state.markers) markerLayer.addTo(map);
+
+  updateHeat();
+  setTimeout(() => map.invalidateSize(), 350);
+  window.addEventListener('resize', () => map.invalidateSize());
+}
+
+const SEV_COLOR = { high:'#ef4444', medium:'#f59e0b', low:'#22d3ee' };
+
+function buildMarkers() {
+  BOTTLENECKS.forEach(b => {
+    const color = SEV_COLOR[b.severity] || '#22d3ee';
+    const icon = L.divIcon({
+      className: '', iconSize: [18, 18], iconAnchor: [9, 9],
+      html: `<div class="bp-pin" style="--c:${color}"><span class="bp-ring"></span><span class="bp-core"></span></div>`
+    });
+    const m = L.marker([b.lat, b.lng], { icon, title: b.name });
+    m.bindTooltip(`${b.name} · LOS ${b.loe}`, { className:'bp-tip', direction:'top', offset:[0, -10] });
+    m.bindPopup(`
+      <div style="min-width:224px">
+        <p style="font-size:13px;font-weight:700;color:#fff;margin:0">${b.name}</p>
+        <p style="font-size:11px;color:#94a3b8;margin:2px 0 6px">${CORRIDORS[b.corridor].label} · peak ${hourLabel(b.peakHour)}</p>
+        <p style="margin:0;color:#cbd5e1">${b.detail}</p>
+        <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px">
+          <span class="chip chip-rose">Delay ${fmt1(b.delay)} min</span>
+          <span class="chip chip-amber">LOS ${b.loe}</span>
+          <span class="chip chip-slate">${b.severity}</span>
+        </div>
+        <p style="font-size:11px;color:#94a3b8;margin:8px 0 0">${b.lines}</p>
+        <button class="pty-btn" onclick="focusBottleneck('${b.id}', true)">Filter + set hour</button>
+        <button class="pty-btn ghost" onclick="map.closePopup()">Dismiss</button>
+      </div>`, { maxWidth: 300 });
+    b.marker = m;
+    markerLayer.addLayer(m);
+  });
+}
+
+/* Heat intensity = modelled corridor density × pressure of variables recorded
+   next to that cell (see VAR.links). Cells whose recorded variables are active
+   in the selected hour burn hotter, which is what the click popup explains. */
+function updateHeat() {
+  if (!heatLayer) return;
+  const intensity = 0.12 + 0.88 * Math.pow(ratioAt(state.hour), 0.85);
+  const cids = state.corridor === 'all' ? CORRIDOR_ORDER : [state.corridor];
+  const activeIds = new Set(activeVarRows(state.corridor, state.hour).map(r => r.i));
+  const pts = []; heatRender = [];
+  cids.forEach(cid => HEAT_POINTS[cid].forEach(([lat, lng, w], idx) => {
+    const ids = (VAR.links[cid] && VAR.links[cid][idx]) || [];
+    const boost = varBoostAt(cid, idx, activeIds);
+    pts.push([lat, lng, clamp(w * boost * intensity, 0.02, 1)]);
+    heatRender.push({ lat, lng, ids, corridor: cid });
+  }));
+  heatLayer.setLatLngs(pts);
+}
+
+function updateMarkerVisibility() {
+  if (!markerLayer || !map) return;
+  BOTTLENECKS.forEach(b => {
+    const show = state.corridor === 'all' || b.corridor === state.corridor;
+    if (show && map.hasLayer(markerLayer)) markerLayer.addLayer(b.marker);
+    if (!show) markerLayer.removeLayer(b.marker);
+  });
+}
+
+function focusBottleneck(id, setHour) {
+  const b = BOTTLENECKS.find(x => x.id === id); if (!b) return;
+  state.corridor = b.corridor;
+  if (setHour) state.hour = b.peakHour;
+  syncControls();
+  renderAll();
+  if (map) { map.flyTo([b.lat, b.lng], 16, { duration: 0.7 }); setTimeout(() => b.marker.openPopup(), 750); }
+}
+window.focusBottleneck = focusBottleneck;
+
+function setTiles(kind) {
+  state.tiles = kind;
+  document.querySelectorAll('[data-tiles]').forEach(btn => btn.classList.toggle('active', btn.dataset.tiles === kind));
+  if (!map) return;
+  Object.values(tiles).forEach(t => map.removeLayer(t));
+  tiles[kind].addTo(map);
+  tiles[kind].bringToBack();
+}
+
+/* ==========================================================================
+   4. CHARTS (Chart.js)
+   ========================================================================== */
+let speedChart = null, modalChart = null;
+const MODE_META = [
+  { key:'jeepney', label:'Jeepney',            color:'#f59e0b' },
+  { key:'bus',     label:'Bus (city + carousel)', color:'#22d3ee' },
+  { key:'rail',    label:'MRT-3 / LRT (rail)',  color:'#a78bfa' },
+  { key:'private', label:'Private vehicle',     color:'#f87171' },
+  { key:'ped',     label:'Pedestrian / micro-mobility', color:'#34d399' }
+];
+
+/* Vertical "current hour" cursor drawn over the trend chart */
+const hourCursor = {
+  id: 'hourCursor',
+  afterDatasetsDraw(chart) {
+    /* only the 24h trend chart carries the hour cursor */
+    if (chart.canvas.id !== 'speedChart') return;
+    const xs = chart.scales.x; if (!xs) return;
+    const x = xs.getPixelForValue(state.hour);
+    const { top, bottom } = chart.chartArea, ctx = chart.ctx;
+    ctx.save();
+    ctx.strokeStyle = 'rgba(226,232,240,.75)'; ctx.lineWidth = 1.5; ctx.setLineDash([4, 4]);
+    ctx.beginPath(); ctx.moveTo(x, top); ctx.lineTo(x, bottom); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle = 'rgba(226,232,240,.92)';
+    ctx.beginPath(); ctx.arc(x, top + 2, 3.5, 0, Math.PI * 2); ctx.fill();
+    ctx.font = '600 10px Inter, sans-serif'; ctx.textAlign = 'center';
+    const label = hourLabel(state.hour);
+    const w = ctx.measureText(label).width + 12, lx = clamp(x - w / 2, chart.chartArea.left, chart.chartArea.right - w);
+    ctx.fillStyle = 'rgba(2,6,23,.9)';
+    ctx.beginPath(); ctx.roundRect(lx, top - 16, w, 14, 4); ctx.fill();
+    ctx.fillStyle = '#67e8f9'; ctx.fillText(label, lx + w / 2, top - 5.5);
+    ctx.restore();
+  }
+};
+if (typeof Chart !== 'undefined') Chart.register(hourCursor);
+
+function buildCharts() {
+  if (typeof Chart === 'undefined') return;
+  Chart.defaults.color = '#94a3b8';
+  Chart.defaults.font.family = 'Inter, ui-sans-serif, system-ui, sans-serif';
+  Chart.defaults.font.size = 10;
+
+  speedChart = new Chart(document.getElementById('speedChart'), {
+    data: {
+      labels: HOURS.map(pad2),
+      datasets: [
+        { type:'bar', label:'Traffic volume (veh/h)', data:[], yAxisID:'y1', order:3, borderRadius:3,
+          backgroundColor:'rgba(245,158,11,.20)', borderColor:'rgba(245,158,11,.55)', borderWidth:1, barPercentage:0.72 },
+        { type:'line', label:'Travel speed (km/h)', data:[], yAxisID:'y', order:2, borderColor:'#22d3ee', borderWidth:2.4,
+          fill:true, tension:0.35, pointRadius:0, pointHitRadius:8, backgroundColor:(c) => {
+            const g = c.chart.ctx.createLinearGradient(0, 0, 0, 200);
+            g.addColorStop(0, 'rgba(34,211,238,.30)'); g.addColorStop(1, 'rgba(34,211,238,0)'); return g; } },
+        { type:'line', label:'Projected speed (scenario)', data:[], yAxisID:'y', order:1, hidden:true, borderColor:'#34d399',
+          borderWidth:2.4, borderDash:[6, 4], tension:0.35, pointRadius:0, fill:false }
+      ]
+    },
+    options: {
+      responsive:true, maintainAspectRatio:false, animation:{ duration:280 },
+      interaction:{ mode:'index', intersect:false },
+      layout:{ padding:{ top:20 } },
+      plugins: {
+        legend:{ position:'bottom', labels:{ boxWidth:10, boxHeight:10, usePointStyle:true, pointStyle:'circle', padding:12 } },
+        tooltip:{ backgroundColor:'rgba(2,6,23,.94)', borderColor:'rgba(148,163,184,.3)', borderWidth:1, padding:10,
+          callbacks:{ title: items => items[0].label + ':00',
+            label: c => '  ' + c.dataset.label + ': ' + (c.dataset.yAxisID === 'y1' ? fmtInt(c.parsed.y) + ' veh/h' : fmt1(c.parsed.y) + ' km/h') } }
+      },
+      scales: {
+        x:{ grid:{ color:'rgba(148,163,184,.08)' }, ticks:{ maxRotation:0, autoSkip:true, maxTicksLimit:12 } },
+        y:{ position:'left', beginAtZero:true, suggestedMax:30, title:{ display:true, text:'km/h', color:'#67e8f9' },
+            grid:{ color:'rgba(148,163,184,.10)' } },
+        y1:{ position:'right', beginAtZero:true, suggestedMax:12000, title:{ display:true, text:'veh/h', color:'#fcd34d' },
+             grid:{ drawOnChartArea:false } }
+      }
+    }
+  });
+
+  modalChart = new Chart(document.getElementById('modalChart'), {
+    type: 'bar',
+    data: { labels: MODE_META.map(m => m.label), datasets: [{ label:'Share of trips (%)', data: [],
+      backgroundColor: MODE_META.map(m => m.color + 'cc'), borderColor: MODE_META.map(m => m.color), borderWidth:1, borderRadius:6, barPercentage:0.62 }] },
+    options: {
+      indexAxis:'y', responsive:true, maintainAspectRatio:false, animation:{ duration:280 },
+      plugins: { legend:{ display:false },
+        tooltip:{ backgroundColor:'rgba(2,6,23,.94)', borderColor:'rgba(148,163,184,.3)', borderWidth:1,
+          callbacks:{ label: c => '  ' + fmt1(c.parsed.x) + '% of trips' } } },
+      scales: { x:{ beginAtZero:true, suggestedMax:60, grid:{ color:'rgba(148,163,184,.10)' }, ticks:{ callback: v => v + '%' } },
+                y:{ grid:{ display:false } } }
+    }
+  });
+}
+
+function updateCharts() {
+  if (!speedChart) return;
+  speedChart.data.datasets[0].data = HOURS.map(h => Math.round(volAt(h)));
+  speedChart.data.datasets[1].data = HOURS.map(h => round(speedBaseline(h), 1));
+  const scActive = activeScenarios().length > 0;
+  speedChart.data.datasets[2].data = scActive ? HOURS.map(h => round(speedAt(h), 1)) : HOURS.map(() => null);
+  speedChart.setDatasetVisibility(2, scActive);
+  speedChart.update('none');
+
+  if (modalChart) {
+    const m = modalSplit(state.hour);
+    modalChart.data.datasets[0].data = MODE_META.map(x => round(m[x.key], 1));
+    modalChart.update('none');
+  }
+}
+
+/* ==========================================================================
+   5. RENDER PIPELINE
+   ========================================================================== */
+function bandOf(h) {
+  if (h <= 3) return ['Overnight low', 'text-slate-400'];
+  if (h <= 5) return ['Early build-up', 'text-slate-400'];
+  if (h <= 9) return ['AM peak window', 'text-amber-300'];
+  if (h <= 15) return ['Midday inter-peak', 'text-cyan-300'];
+  if (h <= 19) return ['PM peak window', 'text-rose-300'];
+  if (h <= 22) return ['Evening wind-down', 'text-amber-300'];
+  return ['Late evening', 'text-slate-400'];
+}
+
+function renderKPIs() {
+  const c = corridorOf(), g = granOf(), h = state.hour;
+  const mean = speedMean(state.corridor), live = speedAt(h), ci = ciAt(h) * 100, peakCi = ciPeak() * 100;
+  const inc = incidentsNow(h), transit = transitShare(h), m = modalSplit(h);
+  const baseMean = speedMeanBaseline(state.corridor);
+  const speedDelta = baseMean > 0 ? mean / baseMean - 1 : 0;
+
+  document.getElementById('kpiSpeed').textContent = fmt1(mean);
+  document.getElementById('kpiSpeedSub').innerHTML = `${g.label} mean` + (speedDelta > 0.001 ? ` <span class="text-emerald-300 font-semibold">(+${fmt1(speedDelta * 100)}% vs baseline)</span>` : '') + ` · now ${fmt1(live)} km/h @ ${hourLabel(h)}`;
+  document.getElementById('kpiCi').textContent = Math.round(peakCi);
+  document.getElementById('kpiCiSub').textContent = `${g.label} peak · now ${Math.round(ci)}% @ ${hourLabel(h)}`;
+  document.getElementById('kpiTransit').textContent = Math.round(transit);
+  document.getElementById('kpiTransitSub').textContent = `Jeepney ${Math.round(m.jeepney)}% · Bus ${Math.round(m.bus)}% · Rail ${Math.round(m.rail)}%`;
+  document.getElementById('kpiInc').textContent = inc;
+  document.getElementById('kpiIncSub').textContent = `${c.deploy} units deployed · ${c.short} · ${hourLabel(h)}`;
+
+  const [band, bandCls] = bandOf(h);
+  const bandEl = document.getElementById('bandLabel'); bandEl.textContent = band; bandEl.className = `text-[11px] font-semibold mt-0.5 ${bandCls}`;
+  document.getElementById('hourClock').textContent = hourLabel(h);
+  document.getElementById('liveHour').textContent = hourLabel(h);
+  document.getElementById('liveSpeed').textContent = fmt1(live);
+  document.getElementById('liveCi').textContent = Math.round(ci);
+  document.getElementById('liveFlow').textContent = fmtInt(volAt(h));
+  document.getElementById('liveInc').textContent = inc;
+  document.getElementById('basisNote').textContent = g.basis;
+  document.getElementById('chartBasis').textContent = `${g.note} · ${c.label} · ${hourLabel(h)} cursor`;
+  document.getElementById('chartBadge').textContent = 'Hour ' + pad2(h);
+  document.getElementById('modalBadge').textContent = `Transit ${Math.round(transit)}% · ${g.note}`;
+  document.getElementById('mapCorridorLabel').textContent = `${c.label} · ${c.links} monitored links`;
+  document.getElementById('mapHourLabel').textContent = `${hourLabel(h)} · ${band} · ${g.note}`;
+  document.getElementById('causeCountBadge').textContent = c.short + ' · top 3';
+}
+
+function renderCauses() {
+  const list = CAUSES[state.corridor] || CAUSES.all;
+  for (let i = 0; i < 3; i++) {
+    const c = list[i] || CAUSES.all[i];
+    document.getElementById(`cause${i}-t`).textContent = c.t;
+    document.getElementById(`cause${i}-s`).textContent = c.s;
+    document.getElementById(`cause${i}-b`).textContent = c.b;
+    document.getElementById(`cause${i}-a`).textContent = c.a;
+    /* every cause is backed by real rows in the variable store */
+    const ids = (CAUSE_VARS[state.corridor] || CAUSE_VARS.all)[i] || [];
+    document.getElementById(`cause${i}-v`).innerHTML = (ids.length && VAR.rows.length)
+      ? '<span class="text-slate-400">Variable evidence:</span> ' + ids.map(id => {
+          const r = VAR.byId[id];
+          if (!r) return `<span class="chip chip-slate">${id}</span>`;
+          return `<span class="chip ${r.meta.chip}" title="${r.id} · ${r.location} · paired congestion ${LEVEL_META[r.level].label} ${Math.round(r.ci)}% · ${Math.round(r.conf * 100)}% confidence · ${r.source}">${r.name} · ${LEVEL_META[r.level].label}</span>`;
+        }).join(' ')
+      : '';
+  }
+}
+
+function renderScenarios() {
+  const c = state.corridor;
+  SCENARIOS.forEach(s => {
+    const on = state.scenarios[s.id];
+    const card = document.getElementById(`card-${s.id}`);
+    const note = document.getElementById(`note-${s.id}`);
+    card.classList.toggle('on', on);
+    const applies = c === 'all' || !!s.speed[c];
+    card.classList.toggle('off', !applies && !on);
+    const pct = scenarioSpeedPct(c);
+    if (!applies) {
+      note.className = 'block mt-2 text-[11px] font-semibold text-amber-300';
+      note.textContent = `Targets ${Object.keys(s.speed).map(x => CORRIDORS[x].short).join(' & ')} — select that corridor (or All Makati) to model the effect.`;
+    } else if (on) {
+      note.className = 'block mt-2 text-[11px] font-semibold text-emerald-300';
+      note.textContent = `Applied · modelled gain +${fmt1(pct * 100)}% on ${c === 'all' ? 'the network' : CORRIDORS[c].short} (projected 24h mean ${fmt1(speedMean(c))} km/h).`;
+    } else {
+      note.className = 'block mt-2 text-[11px] text-slate-400';
+      note.textContent = `Estimated speed gain on ${Object.keys(s.speed).map(x => CORRIDORS[x].short).join(' & ')}: +${Math.round(s.headline)}%. ${s.cost}.`;
+    }
+  });
+
+  const box = document.getElementById('projection');
+  const active = activeScenarios();
+  if (!active.length) { box.classList.add('hidden'); return; }
+  box.classList.remove('hidden');
+  const baseline = speedMeanBaseline(state.corridor);
+  const now = speedMean(state.corridor), gain = (now / baseline - 1) * 100;
+  const m = modalSplit(state.hour), t = transitShare(state.hour);
+  const baseModal = corridorOf().modal; const baseT = baseModal.jeepney + baseModal.bus + baseModal.rail;
+  document.getElementById('projectionText').innerHTML =
+    `<span class="font-semibold text-white">${active.map(a => a.label).join(' + ')}</span> → 24h mean speed ` +
+    `<span class="kpi-num font-bold text-emerald-300">${fmt1(now)} km/h</span> ` +
+    `<span class="text-emerald-300">(+${fmt1(gain)}%)</span>, transit share ` +
+    `<span class="kpi-num font-bold text-emerald-300">${Math.round(t)}%</span> ` +
+    `<span class="text-emerald-300">(${t - baseT >= 0 ? '+' : ''}${fmt1(t - baseT)} pts)</span>, active incidents ${incidentsNow(state.hour)}. ` +
+    `<span class="text-slate-400">Assumptions: 6-month ramp-in, enforcement at 80% compliance, ${active.length} intervention${active.length > 1 ? 's' : ''} combined linearly.</span>`;
+}
+
+function renderAll() {
+  renderKPIs(); renderCauses(); renderScenarios(); renderVariables(); updateCharts(); updateHeat(); updateMarkerVisibility();
+}
+
+/* Baseline (no scenario) speed helpers — keep observed vs. projected series honest */
+function speedBaseline(h, cid) {
+  const c = cid || state.corridor;
+  return CORRIDORS[c].speedBase * (1 - SPEED_SENSITIVITY * cAt(h)) * granOf().speedMul;
+}
+function speedMeanBaseline(cid) { return HOURS.reduce((a, h) => a + speedBaseline(h, cid), 0) / 24; }
+
+/* ==========================================================================
+   6. CONTROLS
+   ========================================================================== */
+function syncControls() {
+  document.getElementById('whereSelect').value = state.corridor;
+  document.querySelectorAll('[data-gran]').forEach(b => b.classList.toggle('active', b.dataset.gran === state.gran));
+  document.getElementById('timeSlider').value = state.hour;
+  document.querySelectorAll('[data-tiles]').forEach(b => b.classList.toggle('active', b.dataset.tiles === state.tiles));
+  SCENARIOS.forEach(s => { document.getElementById('sc-' + s.id).checked = !!state.scenarios[s.id]; });
+}
+
+function setHour(h, fromSlider) {
+  state.hour = clamp(Number(h), 0, 23);
+  if (!fromSlider) document.getElementById('timeSlider').value = state.hour;
+  renderAll();
+}
+
+function togglePlay() {
+  state.playing = !state.playing;
+  document.getElementById('playBtn').textContent = state.playing ? '❚❚ Pause' : '▶ Play 24h';
+  document.getElementById('playBtn').classList.toggle('active', state.playing);
+  if (state.playing) {
+    state.playTimer = setInterval(() => setHour((state.hour + 1) % 24), 950);
+  } else { clearInterval(state.playTimer); }
+}
+
+function wireControls() {
+  document.getElementById('whereSelect').addEventListener('change', e => {
+    state.corridor = e.target.value;
+    renderAll();
+    if (map) {
+      const c = corridorOf();
+      if (state.corridor === 'all') map.flyTo(MAKATI_CENTER, 14, { duration: 0.6 });
+      else {
+        const pts = BOTTLENECKS.filter(b => b.corridor === state.corridor).map(b => [b.lat, b.lng]);
+        if (pts.length) map.flyToBounds(L.latLngBounds(pts).pad(0.35), { duration: 0.7 });
+      }
+    }
+  });
+
+  document.querySelectorAll('[data-gran]').forEach(btn => btn.addEventListener('click', () => {
+    state.gran = btn.dataset.gran; syncControls(); renderAll();
+  }));
+
+  const slider = document.getElementById('timeSlider');
+  slider.addEventListener('input', e => setHour(e.target.value, true));
+  document.getElementById('playBtn').addEventListener('click', togglePlay);
+
+  document.getElementById('tglHeat').addEventListener('change', e => {
+    state.heat = e.target.checked;
+    if (!map || !heatLayer) return;
+    state.heat ? heatLayer.addTo(map) : map.removeLayer(heatLayer);
+  });
+  document.getElementById('tglMarkers').addEventListener('change', e => {
+    state.markers = e.target.checked;
+    if (!map || !markerLayer) return;
+    state.markers ? markerLayer.addTo(map) : map.removeLayer(markerLayer);
+    updateMarkerVisibility();
+  });
+  document.querySelectorAll('[data-tiles]').forEach(btn => btn.addEventListener('click', () => setTiles(btn.dataset.tiles)));
+
+  SCENARIOS.forEach(s => document.getElementById('sc-' + s.id).addEventListener('change', e => {
+    state.scenarios[s.id] = e.target.checked; renderAll();
+  }));
+
+  document.getElementById('resetBtn').addEventListener('click', () => {
+    state.corridor = 'all'; state.gran = 'daily'; state.hour = 18;
+    SCENARIOS.forEach(s => { state.scenarios[s.id] = false; });
+    syncControls(); renderAll();
+    if (map) map.flyTo(MAKATI_CENTER, 14, { duration: 0.6 });
+  });
+
+  document.getElementById('csvBtn').addEventListener('click', exportCSV);
+  document.getElementById('briefBtn').addEventListener('click', exportBrief);
+  document.getElementById('varsBtn').addEventListener('click', exportVarsCSV);
+}
+
+/* ==========================================================================
+   7. EXPORTS (Decide)
+   ========================================================================== */
+function download(filename, text, mime) {
+  const blob = new Blob([text], { type: mime + ';charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename; document.body.appendChild(a); a.click();
+  setTimeout(() => { URL.revokeObjectURL(url); a.remove(); }, 1200);
+}
+const stamp = () => new Date().toISOString().slice(0, 16).replace(/[:T]/g, '-');
+
+function exportCSV() {
+  const c = corridorOf(), g = granOf();
+  const sc = activeScenarios().map(s => s.label).join(' | ') || 'none';
+  const rows = [['# Makati Mobility Intelligence — aggregated export'],
+    ['# corridor', c.label], ['# temporal_basis', g.label + ' (' + g.note + ')'],
+    ['# selected_hour', hourLabel(state.hour)], ['# scenarios', sc], ['# generated', new Date().toISOString()], [],
+    ['hour','corridor','temporal_basis','observed_speed_kmh','projected_speed_kmh','flow_veh_per_h','congestion_index_pct','transit_share_pct','jeepney_pct','bus_pct','rail_pct','private_pct','ped_micro_pct','incidents','scenario_speed_uplift_pct']];
+  HOURS.forEach(h => {
+    const m = modalSplit(h);
+    rows.push([hourLabel(h), c.label, g.label, fmt1(speedBaseline(h)), fmt1(speedAt(h)), Math.round(volAt(h)),
+      Math.round(ciAt(h) * 100), Math.round(transitShare(h)), round(m.jeepney, 1), round(m.bus, 1), round(m.rail, 1),
+      round(m.private, 1), round(m.ped, 1), incidentsNow(h), fmt1(scenarioSpeedPct(state.corridor) * 100)]);
+  });
+  download(`makati-mobility_${state.corridor}_${state.gran}_${stamp()}.csv`, rows.map(r => r.join(',')).join('\n'), 'text/csv');
+}
+
+function exportBrief() {
+  const c = corridorOf(), g = granOf(), h = state.hour;
+  const list = CAUSES[state.corridor] || CAUSES.all;
+  const m = modalSplit(h), t = transitShare(h);
+  const baseline = speedMeanBaseline(state.corridor), now = speedMean(state.corridor);
+  const gain = (now / baseline - 1) * 100;
+  const scRows = SCENARIOS.map(s => `<tr><td>${s.label}</td><td>${state.scenarios[s.id] ? '<b style="color:#0f766e">ENABLED</b>' : 'off'}</td><td>+${Math.round(s.headline)}% (${Object.keys(s.speed).map(x => CORRIDORS[x].short).join(', ')})</td><td>${s.cost}</td></tr>`).join('');
+  const causeRows = list.map((x, i) => `<li><b>${x.t}</b><br>${x.s}<br><span style="color:#475569">${x.b}</span><br><b style="color:#0f766e">Action:</b> ${x.a}</li>`).join('');
+  /* Variable store: the recorded drivers behind the modelled numbers */
+  const activeRowsNow = activeVarRows(state.corridor, h);
+  const varTop = varTopRows(state.corridor, h, 6), varRec = varRecordedLevel(activeRowsNow);
+  const varRowsHtml = varTop.map(({ row, share }) => `<tr><td>${row.meta.short}</td><td>${row.name}<br><span style="color:#64748b">${row.id} · ${windowLabel(row.h0, row.h1)} · ${row.effect === 'decreases' ? 'mitigating' : 'adding'}</span></td><td>${row.location}</td><td><b>${LEVEL_META[row.level].label} (${Math.round(row.ci)}%)</b></td><td>${Math.round(share * 100)}%</td><td>${row.value} ${row.unit} / trigger ${row.threshold}</td><td>${row.source}<br><span style="color:#64748b">${Math.round(row.conf * 100)}% confidence</span></td></tr>`).join('') || '<tr><td colspan="7">No variable rows recorded for this corridor and hour.</td></tr>';
+  const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Makati Mobility — Policy Brief</title>
+  <style>
+    body{font-family:Inter,Segoe UI,system-ui,sans-serif;max-width:900px;margin:36px auto;padding:0 22px;color:#0f172a;line-height:1.55}
+    h1{font-size:23px;margin:0 0 4px}h2{font-size:14px;text-transform:uppercase;letter-spacing:.12em;color:#0e7490;margin:28px 0 8px;border-bottom:1px solid #cbd5e1;padding-bottom:5px}
+    .sub{color:#64748b;font-size:13px;margin:0 0 18px}.meta{background:#f1f5f9;border:1px solid #cbd5e1;border-radius:10px;padding:12px 16px;font-size:13px}
+    table{border-collapse:collapse;width:100%;font-size:13px;margin-top:8px}td,th{border:1px solid #cbd5e1;padding:7px 9px;text-align:left;vertical-align:top}th{background:#e2e8f0;font-size:12px}
+    ul{padding-left:20px;font-size:13px}li{margin-bottom:10px}.kpi{display:flex;flex-wrap:wrap;gap:10px;margin-top:8px}
+    .box{flex:1 1 150px;border:1px solid #cbd5e1;border-radius:10px;padding:10px 12px}.box b{display:block;font-size:21px;color:#0e7490}
+    .foot{margin-top:34px;font-size:11px;color:#64748b;border-top:1px solid #cbd5e1;padding-top:10px}
+    .print{position:fixed;top:14px;right:14px;background:#0e7490;color:#fff;border:0;border-radius:8px;padding:9px 14px;font-weight:700;cursor:pointer}
+  </style></head><body>
+  <button class="print" onclick="window.print()">Print / Save PDF</button>
+  <h1>Makati Mobility Intelligence — Policy Brief</h1>
+  <p class="sub">Generated ${new Date().toLocaleString('en-PH', { timeZone: 'Asia/Manila' })} · Makati City urban transportation planning</p>
+  <div class="meta"><b>Scope:</b> ${c.label} (${c.links} monitored links) &nbsp;|&nbsp; <b>Temporal basis:</b> ${g.label} — ${g.note} &nbsp;|&nbsp; <b>Analysis hour:</b> ${hourLabel(h)} &nbsp;|&nbsp; <b>Scenarios:</b> ${activeScenarios().map(s => s.label).join(' + ') || 'none (baseline)'}</div>
+  <h2>1. Headline indicators</h2>
+  <div class="kpi">
+    <div class="box"><b>${fmt1(now)} km/h</b>24h mean travel speed${gain > 0.001 ? ' (+' + fmt1(gain) + '% projected)' : ''}</div>
+    <div class="box"><b>${Math.round(ciPeak() * 100)}%</b>Peak congestion index (${g.label.toLowerCase()} peak)</div>
+    <div class="box"><b>${Math.round(t)}%</b>Public transit share at ${hourLabel(h)}</div>
+    <div class="box"><b>${incidentsNow(h)}</b>Active incidents at ${hourLabel(h)}</div>
+  </div>
+  <h2>2. Modal split at ${hourLabel(h)}</h2>
+  <table><tr><th>Jeepney</th><th>Bus</th><th>Rail (MRT-3/LRT)</th><th>Private vehicle</th><th>Pedestrian / micro</th></tr>
+  <tr><td>${fmt1(m.jeepney)}%</td><td>${fmt1(m.bus)}%</td><td>${fmt1(m.rail)}%</td><td>${fmt1(m.private)}%</td><td>${fmt1(m.ped)}%</td></tr></table>
+  <h2>3. Bottleneck root causes (ranked)</h2><ol>${causeRows}</ol>
+  <h2>3b. Recorded congestion variables at ${hourLabel(h)}</h2>
+  <p style="font-size:12px;color:#475569;margin:0 0 6px">${VAR.stats.rows} variable rows in <b>${VAR.file}</b> (${VAR.source === 'csv' ? 'live fetch' : 'embedded seed copy'}) · ${activeRowsNow.length} active for this corridor and hour · recorded mean paired congestion index ${Math.round(varRec.index)}% (${LEVEL_META[varRec.level].label}) against a modelled index of ${Math.round(ciAt(h) * 100)}%. Pressure share = weight × congestion index, renormalised across the active rows.</p>
+  <table><tr><th>Category</th><th>Variable (row id · window)</th><th>Location</th><th>Paired congestion level</th><th>Share of pressure</th><th>Observed / trigger</th><th>Source</th></tr>${varRowsHtml}</table>
+  <h2>4. Intervention scenarios modelled</h2>
+  <table><tr><th>Intervention</th><th>Status</th><th>Modelled speed effect</th><th>Indicative set-up cost</th></tr>${scRows}</table>
+  <h2>5. Recommended next steps</h2>
+  <ol style="font-size:13px">
+    <li>Re-run this brief after each intervention ramp-in and compare the modelled +${fmt1(Math.max(gain, 0))}% against measured probe speed.</li>
+    <li>Deploy enforcement resource to the top-ranked cause for the ${c.short} corridor during the ${bandOf(h)[0].toLowerCase()}.</li>
+    <li>Validate the modal-split assumption (transit ${Math.round(t)}%) against the next jeepney/bus APC and MRT-3 tap-count release.</li>
+  </ol>
+  <p class="foot"><b>Variable store:</b> ${VAR.file} — one row per recorded variable occurrence (category, location, time window, paired congestion level and index, weight, confidence, source). Extracts keep the same schema, so they can be re-imported without transformation.<br><b>Caveat:</b> figures derive from an illustrative simulated dataset built on Makati corridor typologies; replace with LGU/MMDA telemetry before budget decisions. Report reference ${stamp()}.</p>
+  </body></html>`;
+  const url = URL.createObjectURL(new Blob([html], { type: 'text/html;charset=utf-8' }));
+  const win = window.open(url, '_blank');
+  if (!win) download(`makati-policy-brief_${stamp()}.html`, html, 'text/html');
+  setTimeout(() => URL.revokeObjectURL(url), 20000);
+  const hint = document.getElementById('exportHint');
+  hint.textContent = win ? 'Policy brief opened in a new tab — use Print / Save PDF inside it.' : 'Popup blocked, so the policy brief was downloaded as an HTML file instead.';
+  hint.className = 'text-[11px] mt-2 text-emerald-300';
+}
+
+/* ==========================================================================
+   8. BOOT
+   ========================================================================== */
+function tickClock() {
+  document.getElementById('syncClock').textContent = new Date().toLocaleTimeString('en-PH', { timeZone: 'Asia/Manila', hour12: false });
+}
+
+(function boot() {
+  initMap();
+  wireControls();
+  buildCharts();
+  syncControls();
+  if (typeof Chart === 'undefined') document.getElementById('exportHint').textContent = 'Chart.js unavailable (offline) — KPIs, map and exports still function.';
+  renderAll();
+  loadVariables();   /* CSV variable store → heat weighting, reasons panel, popups */
+  tickClock(); setInterval(tickClock, 1000);
+})();
+</script>
+</body>
+</html>
